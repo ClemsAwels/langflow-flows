@@ -43,7 +43,8 @@ jobs:
             echo "added=$(escape "$ADDED")"
             echo "modified=$(escape "$MODIFIED")"
             echo "deleted=$(escape "$DELETED")"
-            echo "flows_added=$(escape "$FLOWS_ADDED")"
+            FLOWS_ADDED_JOINED=$(echo "$FLOWS_ADDED" | paste -sd ':::' -)
+            echo "flows_added=$FLOWS_ADDED_JOINED" >> "$GITHUB_OUTPUT"
             echo "flows_modified=$(escape "$FLOWS_MODIFIED")"
             echo "flows_deleted=$(escape "$FLOWS_DELETED")"
           } >> "$GITHUB_OUTPUT"
@@ -62,9 +63,9 @@ jobs:
         run: |
           echo "📡 Sending added flows to Langflow API..."
 
-          echo "${{ steps.changed_files.outputs.flows_added }}" | tr '\\n' '\n' > flows_to_send.txt
+          IFS=':::' read -ra FILES <<< "${{ steps.changed_files.outputs.flows_added }}"
 
-          while IFS= read -r file; do
+          for file in "${FILES[@]}"; do
             if [ -f "$file" ]; then
               echo "➡️ Sending $file"
               curl -X POST "http://localhost:7860/api/v1/flows/" \
@@ -74,4 +75,5 @@ jobs:
             else
               echo "⚠️ File not found: $file"
             fi
-          done < flows_to_send.txt
+          done
+
