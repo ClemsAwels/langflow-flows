@@ -22,13 +22,10 @@ jobs:
           echo "All changes:"
           echo "$CHANGES"
 
-          # Extraire juste les chemins de fichiers
           FILES=$(echo "$CHANGES" | awk '{print $2}')
           
-          # Séparer ceux dans flows/
           FLOWS_FILES=$(echo "$FILES" | grep '^flows/' || true)
 
-          # Échapper les nouvelles lignes pour les outputs
           ESCAPED_ALL=$(echo "$FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
           ESCAPED_FLOWS=$(echo "$FLOWS_FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
 
