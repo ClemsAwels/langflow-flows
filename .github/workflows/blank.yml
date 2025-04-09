@@ -27,17 +27,14 @@ jobs:
           CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
           echo "$CHANGES"
 
-          # Créer trois listes selon le statut (A/M/D)
           ADDED=$(echo "$CHANGES" | awk '$1 == "A" {print $2}')
           MODIFIED=$(echo "$CHANGES" | awk '$1 == "M" {print $2}')
           DELETED=$(echo "$CHANGES" | awk '$1 == "D" {print $2}')
 
-          # Filtres spécifiques à flows/
           FLOWS_ADDED=$(echo "$ADDED" | grep '^flows/' || true)
           FLOWS_MODIFIED=$(echo "$MODIFIED" | grep '^flows/' || true)
           FLOWS_DELETED=$(echo "$DELETED" | grep '^flows/' || true)
 
-          # Échapper les sauts de ligne pour GitHub Outputs
           escape() {
             echo "$1" | sed ':a;N;$!ba;s/\n/\\n/g'
           }
@@ -50,7 +47,7 @@ jobs:
             echo "flows_modified=$(escape "$FLOWS_MODIFIED")"
             echo "flows_deleted=$(escape "$FLOWS_DELETED")"
           } >> "$GITHUB_OUTPUT"
-            
+
       - name: Debug outputs
         run: |
           echo "Added: ${{ steps.changed_files.outputs.added }}"
@@ -60,3 +57,21 @@ jobs:
           echo "Flows - Modified: ${{ steps.changed_files.outputs.flows_modified }}"
           echo "Flows - Deleted: ${{ steps.changed_files.outputs.flows_deleted }}"
 
+      - name: Send new flows to API
+        if: steps.changed_files.outputs.flows_added != ''
+        run: |
+          echo "📡 Sending added flows to Langflow API..."
+
+          echo "${{ steps.changed_files.outputs.flows_added }}" | tr '\\n' '\n' > flows_to_send.txt
+
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              echo "➡️ Sending $file"
+              curl -X POST "http://localhost:7860/api/v1/flows/" \
+                -H "accept: application/json" \
+                -H "Content-Type: application/json" \
+                --data-binary "@$file"
+            else
+              echo "⚠️ File not found: $file"
+            fi
+          done < flows_to_send.txt
