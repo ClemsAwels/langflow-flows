@@ -1,4 +1,4 @@
-name: Manage Langflow Flows
+name: Manage Langflow Flows 
 
 on:
   push:
