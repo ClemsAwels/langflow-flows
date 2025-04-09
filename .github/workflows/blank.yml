@@ -18,16 +18,30 @@ jobs:
       - name: Get changed files and filter flows/
         id: changed_files
         run: |
+          echo "🔍 Getting list of changed files..."
+
           CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
-          echo "All changes:"
           echo "$CHANGES"
 
-          FILES=$(echo "$CHANGES" | awk '{print $2}')
-          
-          FLOWS_FILES=$(echo "$FILES" | grep '^flows/' || true)
+          FILES=$(echo "$CHANGES" | cut -f2)
+          echo "📝 Changed files:"
+          echo "$FILES"
 
+          FLOWS_FILES=$(echo "$FILES" | grep '^flows/' || true)
+          echo "📁 Files in flows/:"
+          echo "$FLOWS_FILES"
+
+          # Échapper les retours à la ligne
           ESCAPED_ALL=$(echo "$FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
           ESCAPED_FLOWS=$(echo "$FLOWS_FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
 
-          echo "all_changes=$ESCAPED_ALL" >> $GITHUB_OUTPUT
-          echo "flows_changes=$ESCAPED_FLOWS" >> $GITHUB_OUTPUT
+          # Utilisation correcte de GITHUB_OUTPUT
+          {
+            echo "all_changes=$ESCAPED_ALL"
+            echo "flows_changes=$ESCAPED_FLOWS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Debug output
+        run: |
+          echo "All changes: ${{ steps.changed_files.outputs.all_changes }}"
+          echo "Flows changes: ${{ steps.changed_files.outputs.flows_changes }}"
