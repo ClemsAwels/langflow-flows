@@ -1,4 +1,5 @@
 name: Manage Langflow Flows
+
 on:
   push:
     branches:
@@ -7,6 +8,8 @@ on:
 jobs:
   detect_changes:
     runs-on: self-hosted
+    outputs:
+      changes: ${{ steps.changed_files.outputs.changes }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -14,5 +17,7 @@ jobs:
       - name: Get changed files
         id: changed_files
         run: |
-          git diff --name-status HEAD^ HEAD > changes.txt
-          echo "::set-output name=changes::$(cat changes.txt)"
+          CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
+          echo "$CHANGES"
+          CHANGES_ESCAPED=$(echo "$CHANGES" | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "changes=$CHANGES_ESCAPED" >> $GITHUB_OUTPUT
