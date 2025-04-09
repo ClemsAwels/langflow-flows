@@ -1,4 +1,4 @@
-name: Suppression des Flows Langflow
+name: Manage Langflow Flows
 
 on:
   push:
@@ -6,84 +6,74 @@ on:
       - main
 
 jobs:
-  delete_flows:
+  detect_changes:
     runs-on: self-hosted
-
+    outputs:
+      added: ${{ steps.changed_files.outputs.added }}
+      modified: ${{ steps.changed_files.outputs.modified }}
+      deleted: ${{ steps.changed_files.outputs.deleted }}
+      flows_added: ${{ steps.changed_files.outputs.flows_added }}
+      flows_modified: ${{ steps.changed_files.outputs.flows_modified }}
+      flows_deleted: ${{ steps.changed_files.outputs.flows_deleted }}
     steps:
-      - name: Récupérer le dépôt
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Détecter les fichiers supprimés
-        id: detect_deleted_files
+      - name: Detect file changes (A/M/D)
+        id: changed_files
         run: |
-          echo "🔍 Détection des fichiers supprimés..."
+          echo "🔍 Detecting file changes..."
+
           CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
           echo "$CHANGES"
 
-          # Filtrer uniquement les fichiers supprimés dans le dossier "flows/"
-          DELETED=$(echo "$CHANGES" | awk '$1 == "D" {print $2}' | grep '^flows/' || true)
+          ADDED=$(echo "$CHANGES" | awk '$1 == "A" {print $2}')
+          MODIFIED=$(echo "$CHANGES" | awk '$1 == "M" {print $2}')
+          DELETED=$(echo "$CHANGES" | awk '$1 == "D" {print $2}')
 
-          # Exporter les fichiers supprimés comme sortie
-          echo "deleted_flows=$DELETED" >> "$GITHUB_OUTPUT"
+          FLOWS_ADDED=$(echo "$ADDED" | grep '^flows/' || true)
+          FLOWS_MODIFIED=$(echo "$MODIFIED" | grep '^flows/' || true)
+          FLOWS_DELETED=$(echo "$DELETED" | grep '^flows/' || true)
 
-      - name: Supprimer les flows via l'API Langflow
-        if: steps.detect_deleted_files.outputs.deleted_flows != ''
+          escape() {
+            echo "$1" | sed ':a;N;$!ba;s/\n/\\n/g'
+          }
+
+          {
+            echo "added=$(escape "$ADDED")"
+            echo "modified=$(escape "$MODIFIED")"
+            echo "deleted=$(escape "$DELETED")"
+            echo "flows_added=$(escape "$FLOWS_ADDED")"
+            echo "flows_modified=$(escape "$FLOWS_MODIFIED")"
+            echo "flows_deleted=$(escape "$FLOWS_DELETED")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Debug outputs
         run: |
-          echo "📡 Suppression des flows via l'API Langflow..."
+          echo "Added: ${{ steps.changed_files.outputs.added }}"
+          echo "Modified: ${{ steps.changed_files.outputs.modified }}"
+          echo "Deleted: ${{ steps.changed_files.outputs.deleted }}"
+          echo "Flows - Added: ${{ steps.changed_files.outputs.flows_added }}"
+          echo "Flows - Modified: ${{ steps.changed_files.outputs.flows_modified }}"
+          echo "Flows - Deleted: ${{ steps.changed_files.outputs.flows_deleted }}"
 
-          # Écrire les fichiers supprimés dans un fichier temporaire
-          echo "${{ steps.detect_deleted_files.outputs.deleted_flows }}" > deleted_flows.txt
+      - name: Send new flows to API
+        if: steps.changed_files.outputs.flows_added != ''
+        run: |
+          echo "📡 Sending added flows to Langflow API..."
 
-          # Installer Python et les dépendances nécessaires
-          python -m pip install requests
+          # Écrire les fichiers ajoutés dans un fichier temporaire
+          echo "${{ steps.changed_files.outputs.flows_added }}" > flows_to_send.txt
 
-          # Script Python pour supprimer les flows
-          python <<EOF
-          import requests
-          import json
-
-          LANGFLOW_URL = "http://192.168.1.21:7860"  # Remplace par ton URL réelle
-
-          # Lire les fichiers supprimés
-          with open("deleted_flows.txt", "r") as f:
-              deleted_files = [line.strip() for line in f if line.strip()]
-
-          for file_path in deleted_files:
-              try:
-                  # Charger le nom du flow depuis le fichier JSON (si disponible)
-                  with open(file_path, "r", encoding="utf-8") as flow_file:
-                      flow_name = json.load(flow_file)["name"]
-
-                  # Obtenir la liste des flows depuis l'API
-                  url = f"{LANGFLOW_URL}/api/v1/flows/"
-                  params = {
-                      "remove_example_flows": "true",
-                      "components_only": "false",
-                      "get_all": "true",
-                      "header_flows": "false",
-                      "page": 1,
-                      "size": 50
-                  }
-                  headers = {"accept": "application/json"}
-                  response = requests.get(url, params=params, headers=headers)
-
-                  if response.status_code == 200:
-                      data = response.json()
-                      for flow in data:
-                          if flow["name"] == flow_name:
-                              flow_id = flow["id"]
-                              print(f"➡️ Suppression du flow avec ID : {flow_id}")
-
-                              # Supprimer le flow via l'API
-                              delete_url = f"{LANGFLOW_URL}/api/v1/flows/{flow_id}"
-                              delete_response = requests.delete(delete_url, headers=headers)
-
-                              if delete_response.status_code == 200:
-                                  print(f"✅ Flow '{flow_name}' supprimé avec succès.")
-                              else:
-                                  print(f"⚠️ Erreur lors de la suppression du flow '{flow_name}': {delete_response.status_code}, {delete_response.text}")
-                  else:
-                      print(f"⚠️ Erreur lors de la récupération des flows : {response.status_code}, {response.text}")
-              except Exception as e:
-                  print(f"⚠️ Impossible de traiter le fichier '{file_path}': {e}")
-          EOF
+          # Lire chaque fichier du fichier temporaire
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              echo "➡️ Sending $file"
+              curl -X POST "http://localhost:7860/api/v1/flows/" \
+                -H "accept: application/json" \
+                -H "Content-Type: application/json" \
+                --data-binary "@$file"
+            else
+              echo "⚠️ File not found: $file"
+            fi
+          done < flows_to_send.txt
