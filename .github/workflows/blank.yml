@@ -50,3 +50,13 @@ jobs:
             echo "flows_modified=$(escape "$FLOWS_MODIFIED")"
             echo "flows_deleted=$(escape "$FLOWS_DELETED")"
           } >> "$GITHUB_OUTPUT"
+            
+      - name: Debug outputs
+        run: |
+          echo "Added: ${{ steps.changed_files.outputs.added }}"
+          echo "Modified: ${{ steps.changed_files.outputs.modified }}"
+          echo "Deleted: ${{ steps.changed_files.outputs.deleted }}"
+          echo "Flows - Added: ${{ steps.changed_files.outputs.flows_added }}"
+          echo "Flows - Modified: ${{ steps.changed_files.outputs.flows_modified }}"
+          echo "Flows - Deleted: ${{ steps.changed_files.outputs.flows_deleted }}"
+
