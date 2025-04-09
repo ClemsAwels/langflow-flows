@@ -1,4 +1,4 @@
-name: Manage Langflow Flows 
+name: Manage Langflow Flows
 
 on:
   push:
@@ -9,15 +9,28 @@ jobs:
   detect_changes:
     runs-on: self-hosted
     outputs:
-      changes: ${{ steps.changed_files.outputs.changes }}
+      all_changes: ${{ steps.changed_files.outputs.all_changes }}
+      flows_changes: ${{ steps.changed_files.outputs.flows_changes }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Get changed files
+      - name: Get changed files and filter flows/
         id: changed_files
         run: |
           CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
+          echo "All changes:"
           echo "$CHANGES"
-          CHANGES_ESCAPED=$(echo "$CHANGES" | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "changes=$CHANGES_ESCAPED" >> $GITHUB_OUTPUT
+
+          # Extraire juste les chemins de fichiers
+          FILES=$(echo "$CHANGES" | awk '{print $2}')
+          
+          # Séparer ceux dans flows/
+          FLOWS_FILES=$(echo "$FILES" | grep '^flows/' || true)
+
+          # Échapper les nouvelles lignes pour les outputs
+          ESCAPED_ALL=$(echo "$FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
+          ESCAPED_FLOWS=$(echo "$FLOWS_FILES" | sed ':a;N;$!ba;s/\n/\\n/g')
+
+          echo "all_changes=$ESCAPED_ALL" >> $GITHUB_OUTPUT
+          echo "flows_changes=$ESCAPED_FLOWS" >> $GITHUB_OUTPUT
