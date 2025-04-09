@@ -62,8 +62,10 @@ jobs:
         run: |
           echo "📡 Sending added flows to Langflow API..."
 
-          echo "${{ steps.changed_files.outputs.flows_added }}" | tr '\\n' '\n' > flows_to_send.txt
+          # Écrire les fichiers ajoutés dans un fichier temporaire
+          echo "${{ steps.changed_files.outputs.flows_added }}" > flows_to_send.txt
 
+          # Lire chaque fichier du fichier temporaire
           while IFS= read -r file; do
             if [ -f "$file" ]; then
               echo "➡️ Sending $file"
