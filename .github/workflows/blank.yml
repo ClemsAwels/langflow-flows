@@ -186,7 +186,7 @@ jobs:
               if [ -z "$folder_id" ]; then
                 echo "📁 Folder \"$FOLDER_NAME\" does not exist. Creating it..."
 
-                # Créer le dossier si nécessaire
+                # Créer le dossier avec une liste vide de composants et flows
                 create_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/folders/" \
                   -H "accept: application/json" \
                   -H "Content-Type: application/json" \
@@ -198,7 +198,7 @@ jobs:
                 echo "📁 Folder \"$FOLDER_NAME\" already exists with ID: $folder_id"
               fi
 
-              # Envoyer le flow au dossier correspondant
+              # Envoyer le flow directement au dossier correspondant
               flow_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/flows/upload/?folder_id=${folder_id}" \
                 -H "accept: application/json" \
                 -H "Content-Type: multipart/form-data" \
