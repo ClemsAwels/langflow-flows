@@ -112,6 +112,7 @@ jobs:
                   delete_response=$(curl -s -X DELETE "${delete_url}" -H "accept: application/json")
 
                   if [ $? -eq 0 ]; then
+                    echo "$delete_url"
                     echo "✅ Flow \"$FLOW_NAME\" (ID : $flow_id) supprimé avec succès."
                   else
                     echo "❌ Erreur lors de la suppression du flow \"$FLOW_NAME\"."
