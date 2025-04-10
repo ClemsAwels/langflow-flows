@@ -155,10 +155,10 @@ class FolderManager:
     
     def organize_flows_by_folder(self, flow_paths: List[str], flow_ids: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
         """
-        Organise les flows en dossiers basés sur leur chemin.
+        Organise les flows en dossiers basés sur leur chemin, en préservant les flows existants.
         
         Args:
-            flow_paths: Liste des chemins de flows.
+            flow_paths: Liste des chemins de flows modifiés/ajoutés.
             flow_ids: Dictionnaire des flows ajoutés/modifiés (ID -> données).
             
         Returns:
@@ -167,7 +167,7 @@ class FolderManager:
         # Initialiser le résultat
         organized_folders = {}
         
-        # Regrouper les flows par dossier
+        # Regrouper les flows modifiés/ajoutés par dossier
         folder_flows = {}
         for flow_path in flow_paths:
             # Extraire le nom du dossier à partir du chemin (exemple: flows/excel/flow.json -> excel)
@@ -189,34 +189,53 @@ class FolderManager:
                         break
         
         # Créer ou mettre à jour les dossiers
-        for folder_name, flows_list in folder_flows.items():
-            if not flows_list:
-                logger.warning(f"Aucun flow trouvé pour le dossier {folder_name}")
+        for folder_name, new_flow_ids in folder_flows.items():
+            if not new_flow_ids:
+                logging.warning(f"Aucun flow trouvé pour le dossier {folder_name}")
                 continue
             
             # Vérifier si le dossier existe déjà
             existing_folder = self.find_folder_by_name(folder_name)
             
             if existing_folder:
-                # Mettre à jour le dossier existant
+                # Récupérer les flows existants dans ce dossier
                 folder_id = existing_folder["id"]
-                success, _ = self.add_flows_to_folder(folder_id, flows_list)
-                if success:
-                    logger.info(f"Flows ajoutés au dossier existant '{folder_name}' (ID: {folder_id})")
-                    organized_folders[folder_name] = flows_list
+                folder_details = self.client.get_folder_by_id(folder_id)
+                
+                if folder_details and "flows" in folder_details:
+                    # Récupérer les IDs des flows existants
+                    existing_flow_ids = [flow["id"] for flow in folder_details["flows"]]
+                    
+                    # Combiner les flows existants avec les nouveaux flows
+                    # en évitant les doublons
+                    combined_flow_ids = list(set(existing_flow_ids + new_flow_ids))
+                    
+                    # Mettre à jour le dossier avec la liste combinée
+                    success, _ = self.add_flows_to_folder(folder_id, combined_flow_ids)
+                    if success:
+                        logging.info(f"Flows ajoutés au dossier existant '{folder_name}' (ID: {folder_id}), préservant {len(existing_flow_ids)} flows existants")
+                        organized_folders[folder_name] = combined_flow_ids
+                    else:
+                        logging.error(f"Échec de l'ajout des flows au dossier '{folder_name}'")
                 else:
-                    logger.error(f"Échec de l'ajout des flows au dossier '{folder_name}'")
+                    # Si nous ne pouvons pas récupérer les flows existants, utiliser uniquement les nouveaux
+                    success, _ = self.add_flows_to_folder(folder_id, new_flow_ids)
+                    if success:
+                        logging.info(f"Flows ajoutés au dossier existant '{folder_name}' (ID: {folder_id})")
+                        organized_folders[folder_name] = new_flow_ids
+                    else:
+                        logging.error(f"Échec de l'ajout des flows au dossier '{folder_name}'")
             else:
                 # Créer un nouveau dossier
                 success, folder_id, _ = self.create_folder(
                     folder_name,
                     description=f"Dossier pour les flows {folder_name}",
-                    flows_list=flows_list
+                    flows_list=new_flow_ids
                 )
                 if success and folder_id:
-                    logger.info(f"Dossier '{folder_name}' créé avec les flows (ID: {folder_id})")
-                    organized_folders[folder_name] = flows_list
+                    logging.info(f"Dossier '{folder_name}' créé avec les flows (ID: {folder_id})")
+                    organized_folders[folder_name] = new_flow_ids
                 else:
-                    logger.error(f"Échec de la création du dossier '{folder_name}'")
+                    logging.error(f"Échec de la création du dossier '{folder_name}'")
         
         return organized_folders
