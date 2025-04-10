@@ -179,40 +179,54 @@ jobs:
               # Extraire le dossier du chemin (exemple : flows/excel/excel specialist.json -> excel)
               FOLDER_NAME=$(dirname "$file" | awk -F'/' '{print $2}')
 
+              # Extraire le nom du flow à partir du fichier
+              FLOW_NAME=$(basename "$file" .json)
+
+              # Vérifier si le flow existe déjà dans l'API
+              response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/flows/" -H "accept: application/json")
+              flow_id=$(echo "$response" | jq -r --arg FLOW_NAME "$FLOW_NAME" '.[] | select(.name == $FLOW_NAME) | .id')
+
+              if [ -z "$flow_id" ]; then
+                echo "❌ Flow \"$FLOW_NAME\" introuvable sur l'API. Assurez-vous qu'il a été correctement envoyé."
+                continue
+              fi
+
               # Vérifier si le dossier existe déjà
-              response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/folders/" -H "accept: application/json")
-              folder_id=$(echo "$response" | jq -r --arg FOLDER_NAME "$FOLDER_NAME" '.[] | select(.name == $FOLDER_NAME) | .id')
+              folder_response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/folders/" -H "accept: application/json")
+              folder_id=$(echo "$folder_response" | jq -r --arg FOLDER_NAME "$FOLDER_NAME" '.[] | select(.name == $FOLDER_NAME) | .id')
 
               if [ -z "$folder_id" ]; then
                 echo "📁 Folder \"$FOLDER_NAME\" does not exist. Creating it..."
 
-                # Créer le dossier avec une liste vide de composants et flows
+                # Créer le dossier avec le flow_id dans "flows_list"
                 create_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/folders/" \
                   -H "accept: application/json" \
                   -H "Content-Type: application/json" \
-                  -d "{\"name\": \"$FOLDER_NAME\", \"description\": \"Folder for $FOLDER_NAME flows\", \"components_list\": [], \"flows_list\": []}")
+                  -d "{\"name\": \"$FOLDER_NAME\", \"description\": \"Folder for $FOLDER_NAME flows\", \"components_list\": [], \"flows_list\": [\"$flow_id\"]}")
 
                 folder_id=$(echo "$create_response" | jq -r '.id')
-                echo "✅ Folder \"$FOLDER_NAME\" created with ID: $folder_id"
+                echo "✅ Folder \"$FOLDER_NAME\" created with ID: $folder_id and flow \"$FLOW_NAME\" added to it."
               else
                 echo "📁 Folder \"$FOLDER_NAME\" already exists with ID: $folder_id"
+
+                # Ajouter le flow au dossier existant en mettant à jour le folder
+                update_response=$(curl -s -X PATCH "${LANGFLOW_URL}/api/v1/folders/${folder_id}" \
+                  -H "accept: application/json" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"flows\": [\"$flow_id\"]}")
+
+                if [ $? -eq 0 ]; then
+                  echo "✅ Flow \"$FLOW_NAME\" moved to folder \"$FOLDER_NAME\" successfully."
+                else
+                  echo "❌ Error moving flow \"$FLOW_NAME\" to folder \"$FOLDER_NAME\"."
+                fi
               fi
 
-              # Envoyer le flow directement au dossier correspondant
-              flow_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/flows/upload/?folder_id=${folder_id}" \
-                -H "accept: application/json" \
-                -H "Content-Type: multipart/form-data" \
-                -F "file=@${file};type=application/json")
-
-              if [ $? -eq 0 ]; then
-                echo "✅ Flow \"$file\" added to folder \"$FOLDER_NAME\" successfully."
-              else
-                echo "❌ Error adding flow \"$file\" to folder \"$FOLDER_NAME\"."
-              fi
             else
               echo "⚠️ File not found: \"$file\""
             fi
           done < flows_to_send.txt
+
 
 
 
