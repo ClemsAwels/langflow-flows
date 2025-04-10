@@ -24,7 +24,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          # Installation directe des dépendances sans utiliser requirements.txt
+          pip install requests
+
+      - name: Clone sync_langflow script
+        run: |
+          cp -r scripts/sync_langflow/* sync_langflow/
 
       - name: Sync Langflow flows
         run: python -m sync_langflow.sync_langflow
