@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'flows/**'
 
 jobs:
   sync:
@@ -24,7 +22,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Installation directe des dépendances sans utiliser requirements.txt
           pip install requests
 
       - name: Clone sync_langflow script
