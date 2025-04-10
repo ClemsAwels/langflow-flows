@@ -109,6 +109,17 @@ def main():
             logger.debug("Dossiers organisés:")
             for folder_name, flows in organized_folders.items():
                 logger.debug(f"  - {folder_name}: {len(flows)} flows")
+
+    # Supprimer les dossiers vides
+    logger.info("Suppression des dossiers vides...")
+    deleted_folders = folder_manager.delete_empty_folders()
+    if deleted_folders:
+        logger.info(f"Dossiers vides supprimés: {len(deleted_folders)}")
+        for folder_name in deleted_folders:
+            logger.info(f"  - {folder_name}")
+    else:
+        logger.info("Aucun dossier vide à supprimer")
+
     
     # Résumé des opérations
     logger.info("Résumé de la synchronisation:")

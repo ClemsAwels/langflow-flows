@@ -6,6 +6,7 @@ Crée des dossiers et organise les flows dans les dossiers.
 import logging
 import os
 from typing import Dict, List, Any, Optional, Tuple
+import requests
 
 # Import relatif
 from .langflow_client import LangflowClient
@@ -239,3 +240,53 @@ class FolderManager:
                     logging.error(f"Échec de la création du dossier '{folder_name}'")
         
         return organized_folders
+
+    """
+    Méthode pour supprimer les dossiers vides dans Langflow.
+    À ajouter à la classe FolderManager.
+    """
+
+    def delete_empty_folders(self) -> List[str]:
+        """
+        Supprime tous les dossiers vides dans Langflow.
+        
+        Returns:
+            List[str]: Liste des noms des dossiers supprimés.
+        """
+        deleted_folders = []
+        
+        # Récupérer tous les dossiers
+        folders = self._get_all_folders(refresh=True)
+        
+        for folder in folders:
+            folder_id = folder.get("id")
+            folder_name = folder.get("name")
+            
+            if not folder_id or not folder_name:
+                continue
+            
+            # Récupérer les détails du dossier pour vérifier s'il est vide
+            folder_details = self.client.get_folder_by_id(folder_id)
+            
+            if not folder_details:
+                continue
+            
+            # Vérifier si le dossier est vide (pas de flows ni de composants)
+            has_flows = folder_details.get("flows", [])
+            has_components = folder_details.get("components", [])
+            
+            if not has_flows and not has_components:
+                # Supprimer le dossier vide
+                try:
+                    url = f"{self.client.base_url}/api/v1/folders/{folder_id}"
+                    response = requests.delete(url, headers=self.client.headers)
+                    
+                    if response.status_code in [200, 204]:
+                        logging.info(f"Dossier vide '{folder_name}' (ID: {folder_id}) supprimé avec succès")
+                        deleted_folders.append(folder_name)
+                    else:
+                        logging.error(f"Échec de la suppression du dossier vide '{folder_name}' (ID: {folder_id}): {response.status_code}")
+                except Exception as e:
+                    logging.error(f"Erreur lors de la suppression du dossier vide '{folder_name}' (ID: {folder_id}): {e}")
+        
+        return deleted_folders
