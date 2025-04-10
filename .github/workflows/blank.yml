@@ -125,4 +125,41 @@ jobs:
             fi
           done < flows_to_delete.txt
 
+      - name: Update modified flows
+        if: steps.changed_files.outputs.flows_modified != ''
+        run: |
+          echo "🔄 Updating modified flows in Langflow API..."
+
+          # Écrire les fichiers modifiés dans un fichier temporaire
+          echo "${{ steps.changed_files.outputs.flows_modified }}" > flows_to_update.txt
+
+          # Traiter chaque fichier modifié
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              FLOW_NAME=$(basename "$file" .json)
+
+              # Récupérer l'ID du flow existant
+              LANGFLOW_URL="http://localhost:7860"
+              response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/flows/" -H "accept: application/json")
+              flow_id=$(echo "$response" | jq -r --arg FLOW_NAME "$FLOW_NAME" '.[] | select(.name == $FLOW_NAME) | .id')
+
+              if [ ! -z "$flow_id" ]; then
+                echo "🔄 Mise à jour du flow \"$FLOW_NAME\" (ID : $flow_id)..."
+                
+                # Envoyer la mise à jour via PATCH
+                curl -X PATCH "${LANGFLOW_URL}/api/v1/flows/${flow_id}" \
+                  -H "accept: application/json" \
+                  -H "Content-Type: application/json" \
+                  --data-binary "@$file"
+
+                echo "✅ Flow \"$FLOW_NAME\" mis à jour avec succès."
+              else
+                echo "⚠️ Aucun flow trouvé avec le nom \"$FLOW_NAME\"."
+              fi
+            else
+              echo "⚠️ Fichier introuvable : \"$file\""
+            fi
+          done < flows_to_update.txt
+
+
 
