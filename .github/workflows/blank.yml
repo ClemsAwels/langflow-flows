@@ -84,7 +84,7 @@ jobs:
             fi
           done < flows_to_send.txt
 
-      - name: Handle deleted flows
+            - name: Handle deleted flows
         if: steps.changed_files.outputs.flows_deleted != ''
         run: |
           echo "📡 Handling deleted flows in Langflow API..."
@@ -124,3 +124,4 @@ jobs:
               fi
             fi
           done < flows_to_delete.txt
+
