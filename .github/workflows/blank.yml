@@ -160,8 +160,8 @@ jobs:
               echo "⚠️ Fichier introuvable : \"$file\""
             fi
           done < flows_to_update.txt
-    
-      - name: Send new flows to API and organize into folders
+
+      - name: Organize flows into folders
         if: steps.changed_files.outputs.flows_added != ''
         run: |
           echo "📂 Organizing added flows into folders..."
@@ -170,17 +170,30 @@ jobs:
           echo "${{ steps.changed_files.outputs.flows_added }}" > flows_to_send.txt
 
           LANGFLOW_URL="http://localhost:7860"
+          FLOW_IDS=""
+          FOLDER_NAME=""
+          FLOW_COUNT=0
 
-          # Lire chaque fichier du fichier temporaire
+          # Collecter les IDs des flows et le nom du dossier
           while IFS= read -r file; do
             if [ -f "$file" ]; then
               echo "➡️ Processing \"$file\""
+              FLOW_COUNT=$((FLOW_COUNT + 1))
 
               # Extraire le dossier du chemin (exemple : flows/excel/excel specialist.json -> excel)
-              FOLDER_NAME=$(dirname "$file" | awk -F'/' '{print $2}')
+              CURRENT_FOLDER_NAME=$(dirname "$file" | awk -F'/' '{print $2}')
 
               # Extraire le nom du flow à partir du fichier
               FLOW_NAME=$(basename "$file" .json)
+
+              # Si c'est le premier flow, initialiser le nom du dossier
+              if [ -z "$FOLDER_NAME" ]; then
+                FOLDER_NAME="$CURRENT_FOLDER_NAME"
+              # Si les flows sont dans des dossiers différents, afficher une erreur et quitter
+              elif [ "$FOLDER_NAME" != "$CURRENT_FOLDER_NAME" ]; then
+                echo "❌ Error: All flows must be in the same folder for this commit."
+                exit 1
+              fi
 
               # Vérifier si le flow existe déjà dans l'API
               response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/flows/" -H "accept: application/json")
@@ -188,46 +201,52 @@ jobs:
 
               if [ -z "$flow_id" ]; then
                 echo "❌ Flow \"$FLOW_NAME\" introuvable sur l'API. Assurez-vous qu'il a été correctement envoyé."
-                continue
+                exit 1
               fi
 
-              # Vérifier si le dossier existe déjà
-              folder_response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/folders/" -H "accept: application/json")
-              folder_id=$(echo "$folder_response" | jq -r --arg FOLDER_NAME "$FOLDER_NAME" '.[] | select(.name == $FOLDER_NAME) | .id')
-
-              if [ -z "$folder_id" ]; then
-                echo "📁 Folder \"$FOLDER_NAME\" does not exist. Creating it..."
-
-                # Créer le dossier avec le flow_id dans "flows_list"
-                create_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/folders/" \
-                  -H "accept: application/json" \
-                  -H "Content-Type: application/json" \
-                  -d "{\"name\": \"$FOLDER_NAME\", \"description\": \"Folder for $FOLDER_NAME flows\", \"components_list\": [], \"flows_list\": [\"$flow_id\"]}")
-
-                folder_id=$(echo "$create_response" | jq -r '.id')
-                echo "✅ Folder \"$FOLDER_NAME\" created with ID: $folder_id and flow \"$FLOW_NAME\" added to it."
-              else
-                echo "📁 Folder \"$FOLDER_NAME\" already exists with ID: $folder_id"
-
-                # Ajouter le flow au dossier existant en mettant à jour le folder
-                update_response=$(curl -s -X PATCH "${LANGFLOW_URL}/api/v1/folders/${folder_id}" \
-                  -H "accept: application/json" \
-                  -H "Content-Type: application/json" \
-                  -d "{\"flows\": [\"$flow_id\"]}")
-
-                if [ $? -eq 0 ]; then
-                  echo "✅ Flow \"$FLOW_NAME\" moved to folder \"$FOLDER_NAME\" successfully."
-                else
-                  echo "❌ Error moving flow \"$FLOW_NAME\" to folder \"$FOLDER_NAME\"."
-                fi
-              fi
-
+              # Ajouter l'ID du flow à la liste
+              FLOW_IDS="$FLOW_IDS \"$flow_id\""
             else
               echo "⚠️ File not found: \"$file\""
             fi
           done < flows_to_send.txt
 
+          # Vérifier si des flows ont été trouvés
+          if [ $FLOW_COUNT -eq 0 ]; then
+            echo "⚠️ No flows found to process."
+            exit 0
+          fi
 
+          # Supprimer l'espace initial de FLOW_IDS
+          FLOW_IDS=$(echo "$FLOW_IDS" | sed 's/^ //')
 
+          # Vérifier si le dossier existe déjà
+          folder_response=$(curl -s -X GET "${LANGFLOW_URL}/api/v1/folders/" -H "accept: application/json")
+          folder_id=$(echo "$folder_response" | jq -r --arg FOLDER_NAME "$FOLDER_NAME" '.[] | select(.name == $FOLDER_NAME) | .id')
 
+          if [ -z "$folder_id" ]; then
+            echo "📁 Folder \"$FOLDER_NAME\" does not exist. Creating it..."
 
+            # Créer le dossier avec les flow_ids dans "flows_list"
+            create_response=$(curl -s -X POST "${LANGFLOW_URL}/api/v1/folders/" \
+              -H "accept: application/json" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"$FOLDER_NAME\", \"description\": \"Folder for $FOLDER_NAME flows\", \"components_list\": [], \"flows_list\": [${FLOW_IDS}]}")
+
+            folder_id=$(echo "$create_response" | jq -r '.id')
+            echo "✅ Folder \"$FOLDER_NAME\" created with ID: $folder_id and flows added to it."
+          else
+            echo "📁 Folder \"$FOLDER_NAME\" already exists with ID: $folder_id"
+
+            # Ajouter les flows au dossier existant en mettant à jour le folder
+            update_response=$(curl -s -X PATCH "${LANGFLOW_URL}/api/v1/folders/${folder_id}" \
+              -H "accept: application/json" \
+              -H "Content-Type: application/json" \
+              -d "{\"flows\": [${FLOW_IDS}]}")
+
+            if [ $? -eq 0 ]; then
+              echo "✅ Flows moved to folder \"$FOLDER_NAME\" successfully."
+            else
+              echo "❌ Error moving flows to folder \"$FOLDER_NAME\"."
+            fi
+          fi
