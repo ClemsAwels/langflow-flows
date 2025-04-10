@@ -77,3 +77,44 @@ jobs:
               echo "⚠️ File not found: $file"
             fi
           done < flows_to_send.txt
+
+      - name: Handle deleted flows
+        if: steps.changed_files.outputs.flows_deleted != ''
+        run: |
+          echo "📡 Handling deleted flows in Langflow API..."
+
+          # Écrire les fichiers supprimés dans un fichier temporaire
+          echo "${{ steps.changed_files.outputs.flows_deleted }}" > flows_to_delete.txt
+
+          # Lire chaque fichier du fichier temporaire pour suppression via l'API Langflow
+          while IFS= read -r file; do
+            if [ ! -f "$file" ]; then  # Vérifie que le fichier est bien supprimé localement
+              FLOW_NAME=$(basename "$file" .json)  # Extrait le nom du flow sans extension
+
+              # Récupérer tous les flows existants via l'API Langflow
+              LANGFLOW_URL="http://localhost:7860"
+              url="${LANGFLOW_URL}/api/v1/flows/"
+              params="remove_example_flows=true&components_only=false&get_all=true&header_flows=false&page=1&size=50"
+
+              response=$(curl -s -X GET "${url}?${params}" -H "accept: application/json")
+              
+              if [ $? -eq 0 ]; then
+                flow_id=$(echo "$response" | jq --arg FLOW_NAME "$FLOW_NAME" '.[] | select(.name == $FLOW_NAME) | .id')
+
+                if [ ! -z "$flow_id" ]; then
+                  delete_url="${LANGFLOW_URL}/api/v1/flows/${flow_id}"
+                  delete_response=$(curl -s -X DELETE "${delete_url}" -H "accept: application/json")
+
+                  if [ $? -eq 0 ]; then
+                    echo "✅ Flow '$FLOW_NAME' (ID : $flow_id) supprimé avec succès."
+                  else
+                    echo "❌ Erreur lors de la suppression du flow '$FLOW_NAME'."
+                  fi
+                else
+                  echo "⚠️ Aucun flow trouvé avec le nom '$FLOW_NAME'."
+                fi
+              else
+                echo "❌ Erreur lors de la récupération des flows depuis l'API."
+              fi
+            fi
+          done < flows_to_delete.txt
