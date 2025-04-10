@@ -160,22 +160,24 @@ jobs:
               echo "⚠️ Fichier introuvable : \"$file\""
             fi
           done < flows_to_update.txt
-
+    
       - name: Organize flows into folders
         if: steps.changed_files.outputs.flows_added != ''
         run: |
           echo "📂 Organizing added flows into folders..."
 
-          # Écrire les fichiers ajoutés dans un fichier temporaire
-          echo "${{ steps.changed_files.outputs.flows_added }}" > flows_to_send.txt
+          # Utiliser tr pour remplacer les sauts de ligne par des espaces, puis lire chaque fichier
+          IFS=$'\n' read -r -d '' -a FILES < <(echo "${{ steps.changed_files.outputs.flows_added }}" | tr '\n' '\n')
 
           LANGFLOW_URL="http://localhost:7860"
+
+          # Initialisation des variables pour collecter les IDs des flows et le nom du dossier
           FLOW_IDS=""
           FOLDER_NAME=""
           FLOW_COUNT=0
 
-          # Collecter les IDs des flows et le nom du dossier
-          while IFS= read -r file; do
+          # Parcourir tous les fichiers
+          for file in "${FILES[@]}"; do
             if [ -f "$file" ]; then
               echo "➡️ Processing \"$file\""
               FLOW_COUNT=$((FLOW_COUNT + 1))
@@ -209,7 +211,7 @@ jobs:
             else
               echo "⚠️ File not found: \"$file\""
             fi
-          done < flows_to_send.txt
+          done
 
           # Vérifier si des flows ont été trouvés
           if [ $FLOW_COUNT -eq 0 ]; then
