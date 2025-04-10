@@ -105,14 +105,13 @@ jobs:
               response=$(curl -s -X GET "${url}?${params}" -H "accept: application/json")
               
               if [ $? -eq 0 ]; then
-                flow_id=$(echo "$response" | jq --arg FLOW_NAME "$FLOW_NAME" '.[] | select(.name == $FLOW_NAME) | .id')
+                flow_id=$(echo "$response" | jq -r --arg FLOW_NAME "$FLOW_NAME" '.[] | select(.name == $FLOW_NAME) | .id')
 
                 if [ ! -z "$flow_id" ]; then
                   delete_url="${LANGFLOW_URL}/api/v1/flows/${flow_id}"
                   delete_response=$(curl -s -X DELETE "${delete_url}" -H "accept: application/json")
 
                   if [ $? -eq 0 ]; then
-                    echo "$delete_url"
                     echo "✅ Flow \"$FLOW_NAME\" (ID : $flow_id) supprimé avec succès."
                   else
                     echo "❌ Erreur lors de la suppression du flow \"$FLOW_NAME\"."
@@ -125,4 +124,5 @@ jobs:
               fi
             fi
           done < flows_to_delete.txt
+
 
