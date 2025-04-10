@@ -30,12 +30,12 @@ jobs:
         run: |
           echo "🔍 Detecting file changes..."
 
-          CHANGES=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }})
+          CHANGES=$(git diff --name-status "${{ github.event.before }}" "${{ github.sha }}")
           echo "$CHANGES"
 
-          ADDED=$(echo "$CHANGES" | awk '$1 == "A" {print $2}')
-          MODIFIED=$(echo "$CHANGES" | awk '$1 == "M" {print $2}')
-          DELETED=$(echo "$CHANGES" | awk '$1 == "D" {print $2}')
+          ADDED=$(echo "$CHANGES" | awk '$1 == "A" {print substr($0, index($0,$2))}')
+          MODIFIED=$(echo "$CHANGES" | awk '$1 == "M" {print substr($0, index($0,$2))}')
+          DELETED=$(echo "$CHANGES" | awk '$1 == "D" {print substr($0, index($0,$2))}')
 
           FLOWS_ADDED=$(echo "$ADDED" | grep '^flows/' || true)
           FLOWS_MODIFIED=$(echo "$MODIFIED" | grep '^flows/' || true)
@@ -74,13 +74,13 @@ jobs:
           # Lire chaque fichier du fichier temporaire
           while IFS= read -r file; do
             if [ -f "$file" ]; then
-              echo "➡️ Sending $file"
+              echo "➡️ Sending \"$file\""
               curl -X POST "http://localhost:7860/api/v1/flows/" \
                 -H "accept: application/json" \
                 -H "Content-Type: application/json" \
                 --data-binary "@$file"
             else
-              echo "⚠️ File not found: $file"
+              echo "⚠️ File not found: \"$file\""
             fi
           done < flows_to_send.txt
 
@@ -112,12 +112,12 @@ jobs:
                   delete_response=$(curl -s -X DELETE "${delete_url}" -H "accept: application/json")
 
                   if [ $? -eq 0 ]; then
-                    echo "✅ Flow '$FLOW_NAME' (ID : $flow_id) supprimé avec succès."
+                    echo "✅ Flow \"$FLOW_NAME\" (ID : $flow_id) supprimé avec succès."
                   else
-                    echo "❌ Erreur lors de la suppression du flow '$FLOW_NAME'."
+                    echo "❌ Erreur lors de la suppression du flow \"$FLOW_NAME\"."
                   fi
                 else
-                  echo "⚠️ Aucun flow trouvé avec le nom '$FLOW_NAME'."
+                  echo "⚠️ Aucun flow trouvé avec le nom \"$FLOW_NAME\"."
                 fi
               else
                 echo "❌ Erreur lors de la récupération des flows depuis l'API."
