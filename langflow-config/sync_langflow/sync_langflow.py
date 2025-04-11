@@ -1138,7 +1138,6 @@ def main():
     """
     Fonction principale qui orchestre le processus de synchronisation.
     """
-
     # Analyser les arguments de ligne de commande
     args = parse_args()
     
@@ -1157,13 +1156,6 @@ def main():
     logger = setup_logging(config.verbose)
     logger.info("Démarrage de la synchronisation Langflow")
     logger.debug(f"Configuration: {config.to_dict()}")
-
-    # Analyser les arguments de ligne de commande
-    logger.info("Détection des changements Git...")
-    changes = git_manager.detect_changes(config.before_commit, config.after_commit)
-    
-    # Logger les changements détectés avec un niveau de détail basé sur le mode verbeux
-    git_manager.log_changes(changes, detailed=config.verbose)
     
     # Initialiser le client API Langflow
     client = LangflowClient(config.langflow_url, config.api_token)
@@ -1177,6 +1169,8 @@ def main():
     logger.info("Détection des changements Git...")
     changes = git_manager.detect_changes(config.before_commit, config.after_commit)
     
+    logger.info("Changements : ", changes)
+
     # Afficher les changements détectés
     logger.info(f"Changements détectés:")
     logger.info(f"  - Flows ajoutés: {len(changes['flows_added'])}")
