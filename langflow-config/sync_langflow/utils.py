@@ -105,8 +105,8 @@ def extract_folder_name_from_path(file_path: str) -> Optional[str]:
         Optional[str]: Nom du dossier ou None si le chemin ne contient pas de dossier.
     """
     path_parts = file_path.split(os.sep)
-    if len(path_parts) >= 2 and path_parts[0] == "flows":
-        return path_parts[1]
+    if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
+        return path_parts[2]  # langflow-config/flows/folder_name/...
     return None
 
 def group_flows_by_folder(flow_paths: list) -> Dict[str, list]:

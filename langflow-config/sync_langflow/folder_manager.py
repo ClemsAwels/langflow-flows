@@ -154,11 +154,6 @@ class FolderManager:
             logger.error(f"Erreur lors de l'ajout de flows au dossier {folder_id}: {e}")
             return False, None
     
-    """
-    Correction pour la méthode organize_flows_by_folder de la classe FolderManager
-    pour résoudre le problème où la création d'un deuxième dossier supprime le premier.
-    """
-
     def organize_flows_by_folder(self, flow_paths: List[str], flow_ids: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
         """
         Organise les flows en dossiers basés sur leur chemin, en préservant les flows existants
@@ -174,13 +169,20 @@ class FolderManager:
         # Initialiser le résultat
         organized_folders = {}
         
-        # Regrouper les flows modifiés/ajoutés par dossier
+        # Créer un dictionnaire pour mapper les noms de flows à leurs IDs
+        flow_name_to_id = {}
+        for flow_id, flow_data in flow_ids.items():
+            flow_name = flow_data.get("name")
+            if flow_name:
+                flow_name_to_id[flow_name] = flow_id
+        
+        # Regrouper les flows par dossier
         folder_flows = {}
         for flow_path in flow_paths:
-            # Extraire le nom du dossier à partir du chemin (exemple: flows/excel/flow.json -> excel)
+            # Extraire le nom du dossier à partir du chemin (exemple: langflow-config/flows/excel/flow.json -> excel)
             path_parts = flow_path.split(os.sep)
-            if len(path_parts) >= 2:
-                folder_name = path_parts[1]  # flows/folder_name/...
+            if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
+                folder_name = path_parts[2]  # langflow-config/flows/folder_name/...
                 
                 # Initialiser la liste des flows pour ce dossier si nécessaire
                 if folder_name not in folder_flows:
@@ -189,11 +191,11 @@ class FolderManager:
                 # Extraire le nom du flow à partir du chemin
                 flow_name = os.path.basename(flow_path).replace(".json", "")
                 
-                # Ajouter le flow à la liste du dossier
-                for flow_id, flow_data in flow_ids.items():
-                    if flow_data.get("name") == flow_name:
+                # Ajouter le flow à la liste du dossier s'il existe dans flow_ids
+                if flow_name in flow_name_to_id:
+                    flow_id = flow_name_to_id[flow_name]
+                    if flow_id not in folder_flows[folder_name]:  # Éviter les doublons
                         folder_flows[folder_name].append(flow_id)
-                        break
         
         # Récupérer tous les dossiers existants une seule fois
         existing_folders = {folder.get("name"): folder for folder in self._get_all_folders(refresh=True) if folder.get("name")}

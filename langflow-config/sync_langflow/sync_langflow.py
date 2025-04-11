@@ -934,8 +934,8 @@ class FolderManager:
         for flow_path in flow_paths:
             # Extraire le nom du dossier à partir du chemin (exemple: flows/excel/flow.json -> excel)
             path_parts = flow_path.split(os.sep)
-            if len(path_parts) >= 2:
-                folder_name = path_parts[1]  # flows/folder_name/...
+            if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
+                folder_name = path_parts[2]  # langflow-config/flows/folder_name/...
                 
                 # Initialiser la liste des flows pour ce dossier si nécessaire
                 if folder_name not in folder_flows:

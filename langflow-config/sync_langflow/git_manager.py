@@ -81,20 +81,20 @@ class GitManager:
             # Si before_commit n'est pas spécifié, utiliser HEAD~1 (commit précédent)
             success, before_commit = self._run_git_command(["rev-parse", "HEAD~1"])
             if not success:
-                logger.error("Impossible de déterminer le commit précédent.")
+                logging.error("Impossible de déterminer le commit précédent.")
                 return changes
         
         if not after_commit:
             # Si after_commit n'est pas spécifié, utiliser HEAD (commit actuel)
             success, after_commit = self._run_git_command(["rev-parse", "HEAD"])
             if not success:
-                logger.error("Impossible de déterminer le commit actuel.")
+                logging.error("Impossible de déterminer le commit actuel.")
                 return changes
         
         # Obtenir les changements entre les deux commits
         success, diff_output = self._run_git_command(["diff", "--name-status", before_commit, after_commit])
         if not success:
-            logger.error(f"Impossible de détecter les changements entre {before_commit} et {after_commit}.")
+            logging.error(f"Impossible de détecter les changements entre {before_commit} et {after_commit}.")
             return changes
         
         # Analyser la sortie de git diff
@@ -105,7 +105,7 @@ class GitManager:
             # Format: A/M/D<tab>file_path
             parts = line.split("\t", 1)
             if len(parts) != 2:
-                logger.warning(f"Format de ligne inattendu: {line}")
+                logging.warning(f"Format de ligne inattendu: {line}")
                 continue
             
             status, file_path = parts
@@ -113,15 +113,15 @@ class GitManager:
             # Ajouter le fichier à la liste correspondante
             if status.startswith("A"):
                 changes["added"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_added"].append(file_path)
             elif status.startswith("M"):
                 changes["modified"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_modified"].append(file_path)
             elif status.startswith("D"):
                 changes["deleted"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_deleted"].append(file_path)
         
         return changes
