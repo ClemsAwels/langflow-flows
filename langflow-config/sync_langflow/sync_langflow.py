@@ -469,15 +469,15 @@ class GitManager:
             # Ajouter le fichier à la liste correspondante
             if status.startswith("A"):
                 changes["added"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_added"].append(file_path)
             elif status.startswith("M"):
                 changes["modified"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_modified"].append(file_path)
             elif status.startswith("D"):
                 changes["deleted"].append(file_path)
-                if file_path.startswith("flows/"):
+                if file_path.startswith("langflow-config/flows/"):
                     changes["flows_deleted"].append(file_path)
         
         return changes
@@ -545,6 +545,7 @@ class FlowManager:
             flow_data = json.loads(flow_content)
             
             # Extraire le nom du flow à partir du chemin du fichier
+            # Utiliser uniquement le nom du fichier sans extension comme nom du flow
             flow_name = os.path.basename(file_path).replace(".json", "")
             
             # Vérifier si le flow existe déjà
@@ -615,6 +616,7 @@ class FlowManager:
         """
         try:
             # Extraire le nom du flow à partir du chemin du fichier
+            # Utiliser uniquement le nom du fichier sans extension comme nom du flow
             flow_name = os.path.basename(flow_path).replace(".json", "")
             
             # Trouver le flow par son nom
@@ -700,6 +702,7 @@ class FlowManager:
                     continue
                 
                 # Extraire le nom du flow à partir du chemin du fichier
+                # Utiliser uniquement le nom du fichier sans extension comme nom du flow
                 flow_name = os.path.basename(flow_path).replace(".json", "")
                 
                 # Trouver le flow par son nom
@@ -932,7 +935,7 @@ class FolderManager:
         # Regrouper les flows par dossier
         folder_flows = {}
         for flow_path in flow_paths:
-            # Extraire le nom du dossier à partir du chemin (exemple: flows/excel/flow.json -> excel)
+            # Extraire le nom du dossier à partir du chemin (exemple: langflow-config/flows/excel/flow.json -> excel)
             path_parts = flow_path.split(os.sep)
             if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
                 folder_name = path_parts[2]  # langflow-config/flows/folder_name/...
@@ -1074,8 +1077,8 @@ def extract_folder_name_from_path(file_path: str) -> Optional[str]:
         Optional[str]: Nom du dossier ou None si le chemin ne contient pas de dossier.
     """
     path_parts = file_path.split(os.sep)
-    if len(path_parts) >= 2 and path_parts[0] == "flows":
-        return path_parts[1]
+    if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
+        return path_parts[2]
     return None
 
 def group_flows_by_folder(flow_paths: list) -> Dict[str, list]:
@@ -1169,8 +1172,6 @@ def main():
     logger.info("Détection des changements Git...")
     changes = git_manager.detect_changes(config.before_commit, config.after_commit)
     
-    logger.info("Changements : ", changes)
-
     # Afficher les changements détectés
     logger.info(f"Changements détectés:")
     logger.info(f"  - Flows ajoutés: {len(changes['flows_added'])}")
