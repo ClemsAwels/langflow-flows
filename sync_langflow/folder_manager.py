@@ -154,9 +154,15 @@ class FolderManager:
             logger.error(f"Erreur lors de l'ajout de flows au dossier {folder_id}: {e}")
             return False, None
     
+    """
+    Correction pour la méthode organize_flows_by_folder de la classe FolderManager
+    pour résoudre le problème où la création d'un deuxième dossier supprime le premier.
+    """
+
     def organize_flows_by_folder(self, flow_paths: List[str], flow_ids: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
         """
-        Organise les flows en dossiers basés sur leur chemin, en préservant les flows existants.
+        Organise les flows en dossiers basés sur leur chemin, en préservant les flows existants
+        et en traitant chaque dossier indépendamment.
         
         Args:
             flow_paths: Liste des chemins de flows modifiés/ajoutés.
@@ -189,14 +195,17 @@ class FolderManager:
                         folder_flows[folder_name].append(flow_id)
                         break
         
-        # Créer ou mettre à jour les dossiers
+        # Récupérer tous les dossiers existants une seule fois
+        existing_folders = {folder.get("name"): folder for folder in self._get_all_folders(refresh=True) if folder.get("name")}
+        
+        # Créer ou mettre à jour chaque dossier indépendamment
         for folder_name, new_flow_ids in folder_flows.items():
             if not new_flow_ids:
                 logging.warning(f"Aucun flow trouvé pour le dossier {folder_name}")
                 continue
             
             # Vérifier si le dossier existe déjà
-            existing_folder = self.find_folder_by_name(folder_name)
+            existing_folder = existing_folders.get(folder_name)
             
             if existing_folder:
                 # Récupérer les flows existants dans ce dossier
@@ -240,6 +249,7 @@ class FolderManager:
                     logging.error(f"Échec de la création du dossier '{folder_name}'")
         
         return organized_folders
+
 
     """
     Méthode pour supprimer les dossiers vides dans Langflow.
