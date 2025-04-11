@@ -1139,6 +1139,13 @@ def main():
     Fonction principale qui orchestre le processus de synchronisation.
     """
     # Analyser les arguments de ligne de commande
+    logger.info("Détection des changements Git...")
+    changes = git_manager.detect_changes(config.before_commit, config.after_commit)
+    
+    # Logger les changements détectés avec un niveau de détail basé sur le mode verbeux
+    git_manager.log_changes(changes, detailed=config.verbose)
+    
+    # Analyser les arguments de ligne de commande
     args = parse_args()
     
     # Initialiser la configuration
