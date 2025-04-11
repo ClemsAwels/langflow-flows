@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'langflow-config/flows/**'
+
 
 jobs:
   sync:
@@ -27,7 +26,7 @@ jobs:
           pip install requests
 
       - name: Sync Langflow flows
-        run: python -m sync_langflow.sync_langflow
+        run: python -m langflow-config.sync_langflow.sync_langflow
         env:
           LANGFLOW_URL: ${{ secrets.LANGFLOW_URL }}
           LANGFLOW_API_TOKEN: ${{ secrets.LANGFLOW_API_TOKEN }}
