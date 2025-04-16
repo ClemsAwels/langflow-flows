@@ -21,7 +21,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m ensurepip --upgrade
+          rm /home/ubuntu/langflow-config-runner/_work/_tool/Python/3.10.17/x64/bin/pip
+          curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+          python get-pip.py
           python -m pip install --upgrade pip
           pip install requests
 
