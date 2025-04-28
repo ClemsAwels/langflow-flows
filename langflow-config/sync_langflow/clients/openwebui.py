@@ -53,13 +53,10 @@ from pydantic import BaseModel
 import requests
 import json
 import os 
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class Pipeline:
     class Valves(BaseModel):
-        BASE_API_URL: str = os.getenv("VALVE_LANGFLOW_API_URL", "no found")
+        BASE_API_URL: str = os.environ.get("VALVE_LANGFLOW_API_URL", "no found")
         ENDPOINT: str = "ENDPOINT_PLACEHOLDER"  # The endpoint name of the flow
         # Default tweaks for the Langflow components
         TWEAKS: dict = {}
