@@ -1803,6 +1803,6 @@
   "description": "A simple but powerful starter agent. ",
   "name": "Clementhe",
   "last_tested_version": "1.2.0",
-  "endpoint_name": "clementhe_agentica",
+  "endpoint_name": "clementhe_agentisation",
   "is_component": false
 }
