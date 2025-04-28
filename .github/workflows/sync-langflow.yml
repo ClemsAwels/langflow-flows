@@ -28,7 +28,10 @@ jobs:
           pip install requests
 
       - name: Sync Langflow flows
-        run: python -m langflow-config.sync_langflow.main
+        run: python -m sync_app.main --langflow-url http://localhost:7860 \
+                       --enable-openwebui \
+                       --openwebui-url http://localhost:3000 \
+                       --openwebui-api-key eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImYzMGNiNmYyLWJhMzYtNGM5Ni1hZGU0LWZiNzUzMjdiOGI2ZCJ9._CbGV9JZFJ8HDru829YVBarGp8C5eFkP37OTn8-wMo0 \
         env:
           LANGFLOW_URL: ${{ secrets.LANGFLOW_URL }}
           LANGFLOW_API_TOKEN: ${{ secrets.LANGFLOW_API_TOKEN }}
