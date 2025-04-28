@@ -253,26 +253,10 @@ class Pipeline:
         # Si le nom n'est pas disponible, utiliser le nom du fichier
         if not flow_name:
             flow_name = os.path.basename(flow_path).replace(".json", "")
-        
-        # Extraire l'endpoint_name
-        endpoint_name = None
-        
-        # Chercher l'endpoint_name dans les données du flow
-        if "data" in flow_data and isinstance(flow_data["data"], dict):
-            # Chercher dans les nœuds du flow
-            nodes = flow_data["data"].get("nodes", [])
-            for node in nodes:
-                # Chercher les nœuds de type API
-                # Amélioration: Vérifier si node_data existe avant d'y accéder
-                node_data = node.get("data")
-                if node_data and ("APINode" in node.get("id", "") or "API" in node.get("type", "")):
-                    if "endpoint_name" in node_data:
-                        endpoint_name = node_data["endpoint_name"]
-                        logger.debug(f"Endpoint name trouvé dans le noeud API: {endpoint_name}")
-                        break
-        
-        # Si endpoint_name n'est pas trouvé, utiliser le nom du flow comme fallback
+
+        endpoint_name = flow_data.get("endpoint_name")
         if not endpoint_name:
+            # Si endpoint_name n'est pas disponible, utiliser le nom du flow
             endpoint_name = flow_name.lower().replace(" ", "_")
             logger.warning(f"Endpoint name non trouvé pour le flow '{flow_name}', utilisation de '{endpoint_name}' comme fallback")
         
