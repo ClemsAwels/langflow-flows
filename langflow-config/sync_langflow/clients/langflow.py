@@ -1,18 +1,9 @@
-"""
-Client API pour interagir avec l'API Langflow.
-Encapsule toutes les opérations API (GET, POST, PATCH, DELETE).
-"""
-
-import json
-import logging
-import os
-from typing import Dict, List, Any, Optional, Union, Tuple
-
 import requests
+import logging
+from typing import Dict, List, Any, Optional
 from requests.exceptions import RequestException
 
-logger = logging.getLogger(__name__)
-
+logger = logging.getLogger("sync_app")
 
 class LangflowClient:
     """Client pour interagir avec l'API Langflow."""
@@ -53,11 +44,11 @@ class LangflowClient:
             response.raise_for_status()
             return response.json() if response.content else {}
         except RequestException as e:
-            error_msg = f"Erreur API: {e}"
+            error_msg = f"Erreur API Langflow ({response.url}): {e}"
             try:
                 error_data = response.json()
                 if "detail" in error_data:
-                    error_msg = f"Erreur API: {error_data['detail']}"
+                    error_msg = f"Erreur API Langflow ({response.url}): {error_data['detail']}"
             except:
                 pass
             logger.error(error_msg)
@@ -79,7 +70,7 @@ class LangflowClient:
             "get_all": "true",
             "header_flows": "false",
             "page": "1",
-            "size": "50"
+            "size": "50" # TODO: Gérer la pagination si nécessaire
         }
         
         if folder_id:
@@ -89,6 +80,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/flows/"
         
         try:
+            logger.debug(f"GET {url} avec params: {params}")
             response = requests.get(url, headers=self.headers, params=params)
             return self._handle_response(response)
         except Exception as e:
@@ -108,6 +100,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/flows/{flow_id}"
         
         try:
+            logger.debug(f"GET {url}")
             response = requests.get(url, headers=self.headers)
             return self._handle_response(response)
         except Exception as e:
@@ -127,6 +120,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/flows/"
         
         try:
+            logger.debug(f"POST {url}")
             response = requests.post(url, headers=self.headers, json=flow_data)
             return self._handle_response(response)
         except Exception as e:
@@ -147,6 +141,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/flows/{flow_id}"
         
         try:
+            logger.debug(f"PATCH {url}")
             response = requests.patch(url, headers=self.headers, json=flow_data)
             return self._handle_response(response)
         except Exception as e:
@@ -166,6 +161,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/flows/{flow_id}"
         
         try:
+            logger.debug(f"DELETE {url}")
             response = requests.delete(url, headers=self.headers)
             self._handle_response(response)
             return True
@@ -183,6 +179,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/folders/"
         
         try:
+            logger.debug(f"GET {url}")
             response = requests.get(url, headers=self.headers)
             return self._handle_response(response)
         except Exception as e:
@@ -202,6 +199,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/folders/{folder_id}"
         
         try:
+            logger.debug(f"GET {url}")
             response = requests.get(url, headers=self.headers)
             return self._handle_response(response)
         except Exception as e:
@@ -221,6 +219,7 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/folders/"
         
         try:
+            logger.debug(f"POST {url}")
             response = requests.post(url, headers=self.headers, json=folder_data)
             return self._handle_response(response)
         except Exception as e:
@@ -241,40 +240,33 @@ class LangflowClient:
         url = f"{self.base_url}/api/v1/folders/{folder_id}"
         
         try:
+            logger.debug(f"PATCH {url}")
             response = requests.patch(url, headers=self.headers, json=folder_data)
             return self._handle_response(response)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du dossier {folder_id}: {e}")
             return None
-    
-    def upload_flow_file(self, file_path: str, folder_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+
+    def delete_folder(self, folder_id: str) -> bool:
         """
-        Télécharge un fichier de flow.
-        
+        Supprime un dossier.
+
         Args:
-            file_path: Chemin vers le fichier de flow.
-            folder_id: ID du dossier cible (optionnel).
-            
+            folder_id: ID du dossier à supprimer.
+
         Returns:
-            Optional[Dict[str, Any]]: Données du flow téléchargé ou None en cas d'erreur.
+            bool: True si la suppression a réussi, False sinon.
         """
-        url = f"{self.base_url}/api/v1/flows/upload/"
-        
-        if folder_id:
-            url += f"?folder_id={folder_id}"
-        
-        headers = {
-            "accept": "application/json",
-        }
-        
-        if self.api_token:
-            headers["Authorization"] = f"Bearer {self.api_token}"
-        
+        url = f"{self.base_url}/api/v1/folders/{folder_id}"
         try:
-            with open(file_path, "rb") as file:
-                files = {"file": (os.path.basename(file_path), file, "application/json")}
-                response = requests.post(url, headers=headers, files=files)
-                return self._handle_response(response)
+            logger.debug(f"DELETE {url}")
+            response = requests.delete(url, headers=self.headers)
+            if response.status_code in [200, 204]:
+                return True
+            else:
+                logger.error(f"Échec de la suppression du dossier (ID: {folder_id}): {response.status_code} - {response.text}")
+                return False
         except Exception as e:
-            logger.error(f"Erreur lors du téléchargement du fichier {file_path}: {e}")
-            return None
+            logger.error(f"Erreur lors de la suppression du dossier (ID: {folder_id}): {e}")
+            return False
+

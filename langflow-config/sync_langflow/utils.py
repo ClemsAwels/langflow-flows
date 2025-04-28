@@ -1,12 +1,6 @@
-"""
-Fonctions utilitaires pour le traitement des fichiers, le logging, etc.
-"""
-
-import json
 import logging
 import os
 import sys
-from typing import Dict, Any, Optional
 
 # Configuration du logging
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -20,10 +14,10 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
         logging.Logger: Logger configuré.
     """
     # Créer le logger
-    logger = logging.getLogger("sync_langflow")
+    logger = logging.getLogger("sync_app") # Nom du logger mis à jour
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     
-    # Supprimer les handlers existants
+    # Supprimer les handlers existants pour éviter les doublons
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
     
@@ -32,7 +26,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     console_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
     
     # Définir le format
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(formatter)
     
     # Ajouter le handler au logger
@@ -40,90 +34,50 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     
     return logger
 
-def read_json_file(file_path: str) -> Optional[Dict[str, Any]]:
-    """
-    Lit un fichier JSON et retourne son contenu.
-    
-    Args:
-        file_path: Chemin du fichier JSON.
-        
-    Returns:
-        Optional[Dict[str, Any]]: Contenu du fichier JSON ou None en cas d'erreur.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            return json.load(file)
-    except json.JSONDecodeError as e:
-        logging.error(f"Erreur de décodage JSON pour le fichier {file_path}: {e}")
-        return None
-    except Exception as e:
-        logging.error(f"Erreur lors de la lecture du fichier {file_path}: {e}")
-        return None
-
-def write_json_file(file_path: str, data: Dict[str, Any]) -> bool:
-    """
-    Écrit des données dans un fichier JSON.
-    
-    Args:
-        file_path: Chemin du fichier JSON.
-        data: Données à écrire.
-        
-    Returns:
-        bool: True si l'écriture a réussi, False sinon.
-    """
-    try:
-        # Créer le répertoire parent si nécessaire
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
-        with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=2, ensure_ascii=False)
-        return True
-    except Exception as e:
-        logging.error(f"Erreur lors de l'écriture du fichier {file_path}: {e}")
-        return False
-
-def extract_flow_name_from_path(file_path: str) -> str:
+def extract_flow_name_from_path(flow_path: str) -> str:
     """
     Extrait le nom du flow à partir du chemin du fichier.
     
     Args:
-        file_path: Chemin du fichier de flow.
+        flow_path: Chemin du fichier de flow.
         
     Returns:
-        str: Nom du flow.
+        str: Nom du flow (sans extension).
     """
-    return os.path.basename(file_path).replace(".json", "")
+    return os.path.basename(flow_path).replace(".json", "")
 
-def extract_folder_name_from_path(file_path: str) -> Optional[str]:
+def extract_folder_name_from_path(flow_path: str) -> str | None:
     """
     Extrait le nom du dossier à partir du chemin du fichier.
+    La structure attendue est "langflow-config/flows/folder_name/flow_name.json"
+    ou "flows/folder_name/flow_name.json".
     
     Args:
-        file_path: Chemin du fichier de flow.
+        flow_path: Chemin du fichier de flow.
         
     Returns:
-        Optional[str]: Nom du dossier ou None si le chemin ne contient pas de dossier.
+        str | None: Nom du dossier ou None si non trouvé.
     """
-    path_parts = file_path.split(os.sep)
-    if len(path_parts) >= 3 and path_parts[0] == "langflow-config" and path_parts[1] == "flows":
-        return path_parts[2]  # langflow-config/flows/folder_name/...
-    return None
+    try:
+        # Normaliser le chemin pour utiliser les séparateurs corrects
+        normalized_path = os.path.normpath(flow_path)
+        path_parts = normalized_path.split(os.sep)
+        
+        # Chercher l'index de "flows"
+        try:
+            flows_index = path_parts.index("flows")
+        except ValueError:
+            # Si "flows" n'est pas trouvé, le chemin n'est pas valide
+            return None
+        
+        # Le nom du dossier est l'élément après "flows"
+        if flows_index + 1 < len(path_parts) - 1: # S'assurer qu'il y a un dossier et un fichier
+            return path_parts[flows_index + 1]
+        else:
+            # Si le flow est directement dans "flows" ou "langflow-config/flows"
+            return None
+            
+    except Exception as e:
+        logging.error(f"Erreur lors de l'extraction du nom de dossier pour {flow_path}: {e}")
+        return None
 
-def group_flows_by_folder(flow_paths: list) -> Dict[str, list]:
-    """
-    Regroupe les flows par dossier.
-    
-    Args:
-        flow_paths: Liste des chemins de flows.
-        
-    Returns:
-        Dict[str, list]: Dictionnaire des flows regroupés par dossier.
-    """
-    result = {}
-    for path in flow_paths:
-        folder_name = extract_folder_name_from_path(path)
-        if folder_name:
-            if folder_name not in result:
-                result[folder_name] = []
-            result[folder_name].append(path)
-    return result

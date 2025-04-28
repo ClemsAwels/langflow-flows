@@ -28,7 +28,7 @@ jobs:
           pip install requests
 
       - name: Sync Langflow flows
-        run: python -m langflow-config.sync_langflow.sync_langflow
+        run: python -m langflow-config.sync_langflow.main
         env:
           LANGFLOW_URL: ${{ secrets.LANGFLOW_URL }}
           LANGFLOW_API_TOKEN: ${{ secrets.LANGFLOW_API_TOKEN }}

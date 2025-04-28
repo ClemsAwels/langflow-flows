@@ -1,77 +1,125 @@
-# Sync Langflow
+# Synchronisation Langflow et OpenWebUI (Application Modulaire)
 
-Un script Python pour synchroniser automatiquement les flows Langflow entre un dépôt Git et une instance Langflow.
+Cette application Python permet de synchroniser automatiquement les flows Langflow entre un dépôt Git et une instance Langflow, ainsi que de mettre à jour les pipelines correspondants dans OpenWebUI. Elle détecte les changements dans les fichiers JSON des flows et les synchronise avec l\"instance Langflow, en gérant l\"ajout, la modification et la suppression de flows, ainsi que leur organisation en dossiers. Elle génère également des pipelines pour OpenWebUI basés sur ces flows.
+
+Ce projet est structuré de manière modulaire pour faciliter la maintenance et l\"extension.
 
 ## Fonctionnalités
 
-- Détection automatique des flows ajoutés, modifiés et supprimés dans un dépôt Git
-- Synchronisation bidirectionnelle entre le dépôt Git et l'instance Langflow
-- Organisation des flows en dossiers basée sur la structure du dépôt
-- Authentification via token API
-- Logging détaillé des opérations
-- Interface en ligne de commande flexible
+### Synchronisation Langflow
+- Détection automatique des changements dans les fichiers de flows via Git
+- Ajout, modification et suppression de flows dans Langflow
+- Organisation des flows en dossiers basée sur la structure des dossiers dans le dépôt
+- Préservation des flows existants non modifiés dans les dossiers
+- Gestion correcte de plusieurs dossiers et flows
+- Suppression des dossiers vides à la fin du processus
+- Support complet pour la structure de dossiers `langflow-config/flows/`
+- Logs détaillés pour faciliter le débogage
+
+### Intégration OpenWebUI
+- Extraction automatique des informations des flows Langflow (endpoint_name et name)
+- Génération de pipelines OpenWebUI basés sur un template
+- Téléchargement des pipelines vers OpenWebUI via l\"API
+- Mise à jour des pipelines lorsque les flows correspondants sont modifiés
+- Gestion des cas où les informations nécessaires sont manquantes
+
+## Structure du Projet
+
+L\"application est organisée en plusieurs modules :
+
+- `sync_app/` : Répertoire principal du package
+  - `__init__.py` : Initialisation du package
+  - `main.py` : Point d\"entrée principal, orchestre les opérations
+  - `config.py` : Gestion de la configuration (arguments CLI, variables d\"env)
+  - `utils.py` : Fonctions utilitaires (logging, extraction de noms)
+  - `clients/` : Modules pour interagir avec les API externes
+    - `__init__.py`
+    - `langflow.py` : Client pour l\"API Langflow
+    - `openwebui.py` : Client pour l\"API OpenWebUI
+  - `managers/` : Modules contenant la logique métier
+    - `__init__.py`
+    - `git.py` : Gestionnaire pour les opérations Git
+    - `flow.py` : Gestionnaire pour les opérations sur les flows Langflow
+    - `folder.py` : Gestionnaire pour les opérations sur les dossiers Langflow
+    - `pipeline.py` : (Intégré dans `clients/openwebui.py` pour la génération/upload)
 
 ## Prérequis
 
-- Python 3.6+
+- Python 3.7+
 - Git
-- Une instance Langflow accessible
+- Accès à une instance Langflow
+- Accès à une instance OpenWebUI (optionnel)
+- Dépendances Python : `requests`
 
 ## Installation
 
-1. Clonez ce dépôt :
-```bash
-git clone https://github.com/votre-utilisateur/sync-langflow.git
-cd sync-langflow
-```
+1. Clonez ce dépôt.
+2. Installez les dépendances requises :
 
-2. Installez les dépendances :
 ```bash
-pip install -r requirements.txt
+pip install requests
 ```
 
 ## Utilisation
 
-### Configuration
+### En ligne de commande
 
-Le script peut être configuré via des variables d'environnement ou des arguments de ligne de commande :
+Exécutez l\"application comme un module Python depuis le répertoire parent du dossier `sync_app` :
 
-- `LANGFLOW_URL` : URL de l'instance Langflow (par défaut : http://localhost:7860)
-- `LANGFLOW_API_TOKEN` : Token d'API pour l'authentification
+```bash
+python -m sync_app.main [--langflow-url URL] [--api-token TOKEN] [--repo-path PATH]
+                       [--before-commit COMMIT] [--after-commit COMMIT] [--verbose]
+                       [--openwebui-url URL] [--openwebui-api-key KEY] [--enable-openwebui]
+                       [--openwebui-template-path PATH]
+```
+
+### Options
+
+#### Options Langflow
+- `--langflow-url` : URL de l\"instance Langflow (par défaut: http://localhost:7860)
+- `--api-token` : Token d\"API pour l\"authentification Langflow
+- `--repo-path` : Chemin vers le dépôt Git local (par défaut: répertoire courant)
+- `--before-commit` : Commit de référence pour la comparaison (avant)
+- `--after-commit` : Commit de référence pour la comparaison (après)
+- `--verbose` : Active le mode verbeux pour le logging
+
+#### Options OpenWebUI
+- `--openwebui-url` : URL de l\"instance OpenWebUI (par défaut: http://localhost:3000)
+- `--openwebui-api-key` : Clé API pour l\"authentification OpenWebUI
+- `--enable-openwebui` : Active l\"intégration avec OpenWebUI
+- `--openwebui-template-path` : Chemin vers le template de pipeline personnalisé
+
+### Variables d\"environnement
+
+Vous pouvez également configurer l\"application via des variables d\"environnement :
+
+#### Variables Langflow
+- `LANGFLOW_URL` : URL de l\"instance Langflow
+- `LANGFLOW_API_TOKEN` : Token d\"API pour l\"authentification Langflow
 - `REPO_PATH` : Chemin vers le dépôt Git local
 - `BEFORE_COMMIT` : Commit de référence pour la comparaison (avant)
 - `AFTER_COMMIT` : Commit de référence pour la comparaison (après)
-- `VERBOSE` : Mode verbeux pour le logging
+- `VERBOSE` : Active le mode verbeux pour le logging (true/false)
 
-### Exécution
+#### Variables OpenWebUI
+- `OPENWEBUI_URL` : URL de l\"instance OpenWebUI
+- `OPENWEBUI_API_KEY` : Clé API pour l\"authentification OpenWebUI
+- `ENABLE_OPENWEBUI` : Active l\"intégration avec OpenWebUI (true/false)
+- `OPENWEBUI_TEMPLATE_PATH` : Chemin vers le template de pipeline personnalisé
 
-```bash
-# Exécution basique avec les valeurs par défaut
-python -m sync_langflow.sync_langflow
+## Intégration avec GitHub Actions
 
-# Spécifier l'URL de Langflow et le token d'API
-python -m sync_langflow.sync_langflow --langflow-url https://votre-instance-langflow.com --api-token votre-token-api
-
-# Spécifier les commits à comparer
-python -m sync_langflow.sync_langflow --before-commit abc123 --after-commit def456
-
-# Activer le mode verbeux
-python -m sync_langflow.sync_langflow --verbose
-```
-
-### Intégration avec GitHub Actions
-
-Pour utiliser ce script dans un workflow GitHub Actions, créez un fichier `.github/workflows/sync-langflow.yml` avec le contenu suivant :
+Vous pouvez intégrer cette application dans un workflow GitHub Actions pour synchroniser automatiquement les flows et les pipelines lorsque des modifications sont apportées au dépôt. Voici un exemple de configuration :
 
 ```yaml
-name: Sync Langflow Flows
+name: Sync Langflow Flows and OpenWebUI Pipelines
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'flows/**'
+      - 'langflow-config/flows/**'
 
 jobs:
   sync:
@@ -90,53 +138,86 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install requests
 
-      - name: Sync Langflow flows
-        run: python -m sync_langflow.sync_langflow
+      # Assurez-vous que le code de l'application (le dossier sync_app)
+      # est présent dans le répertoire de travail du workflow.
+      # Vous pouvez soit l'inclure dans le même dépôt, soit le cloner.
+      # Exemple si sync_app est dans le même dépôt :
+      # - name: Check code structure
+      #   run: ls -R
+
+      - name: Sync Langflow flows and OpenWebUI pipelines
+        # Exécuter comme un module
+        run: python -m sync_app.main --enable-openwebui --verbose
         env:
           LANGFLOW_URL: ${{ secrets.LANGFLOW_URL }}
           LANGFLOW_API_TOKEN: ${{ secrets.LANGFLOW_API_TOKEN }}
+          OPENWEBUI_URL: ${{ secrets.OPENWEBUI_URL }}
+          OPENWEBUI_API_KEY: ${{ secrets.OPENWEBUI_API_KEY }}
           BEFORE_COMMIT: ${{ github.event.before }}
           AFTER_COMMIT: ${{ github.sha }}
+          REPO_PATH: ${{ github.workspace }}
 ```
 
-## Structure du projet
+N\"oubliez pas de configurer les secrets GitHub pour `LANGFLOW_URL`, `LANGFLOW_API_TOKEN`, `OPENWEBUI_URL` et `OPENWEBUI_API_KEY` dans les paramètres de votre dépôt.
+
+## Structure des dossiers
+
+L\"application s\"attend à ce que les flows soient organisés dans la structure de dossiers suivante :
 
 ```
-sync_langflow/
-├── __init__.py          # Initialisation du package
-├── config.py            # Configuration et gestion des arguments
-├── git_manager.py       # Gestion des opérations Git
-├── langflow_client.py   # Client API pour Langflow
-├── flow_manager.py      # Gestion des flows
-├── folder_manager.py    # Gestion des dossiers
-├── utils.py             # Fonctions utilitaires
-└── sync_langflow.py     # Script principal
+langflow-config/
+└── flows/
+    ├── DossierA/
+    │   ├── Flow1.json
+    │   └── Flow2.json
+    └── DossierB/
+        ├── Flow3.json
+        └── Flow4.json
 ```
 
-## Développement
+Chaque dossier sous `langflow-config/flows/` sera créé comme un dossier dans Langflow, et les flows JSON qu\"il contient seront ajoutés à ce dossier.
 
-### Tests
+## Fonctionnement
 
-Pour exécuter les tests :
+### Synchronisation Langflow
+1. Le script détecte les changements dans les fichiers de flows entre deux commits Git
+2. Il traite les flows ajoutés, modifiés et supprimés
+3. Il organise les flows en dossiers basés sur la structure des dossiers dans le dépôt
+4. Il préserve les flows existants non modifiés dans les dossiers
+5. Il supprime les dossiers vides à la fin du processus
 
-```bash
-# Créer un environnement de test
-./setup_test_env.sh
+### Intégration OpenWebUI
+1. Pour chaque flow ajouté ou modifié, le script extrait l\"endpoint_name et le name
+2. Il génère un fichier de pipeline basé sur un template, en remplaçant les placeholders par les valeurs extraites
+3. Il télécharge le pipeline généré vers OpenWebUI via l\"API
+4. Si l\"endpoint_name n\"est pas trouvé dans le flow, il utilise le nom du flow comme fallback
 
-# Exécuter le test de détection Git
-python test_git_detection.py
-```
+## Personnalisation du template de pipeline
 
-### Contribution
+Vous pouvez fournir votre propre template de pipeline en utilisant l\"option `--openwebui-template-path`. Le template doit contenir les placeholders suivants :
+- `ENDPOINT_PLACEHOLDER` : Sera remplacé par l\"endpoint_name du flow
+- `FLOW_NAME_PLACEHOLDER` : Sera remplacé par le nom du flow
 
-1. Forkez le dépôt
-2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/amazing-feature`)
-3. Committez vos changements (`git commit -m 'Add some amazing feature'`)
-4. Poussez vers la branche (`git push origin feature/amazing-feature`)
-5. Ouvrez une Pull Request
+Si aucun template personnalisé n\"est fourni, le script utilisera un template par défaut.
+
+## Dépannage
+
+Si vous rencontrez des problèmes avec l\"application, activez le mode verbeux avec l\"option `--verbose` ou en définissant la variable d\"environnement `VERBOSE=true`. Cela affichera des logs détaillés qui peuvent aider à identifier la source du problème.
+
+### Problèmes courants
+
+#### Extraction de l\"endpoint_name
+Si le script ne parvient pas à extraire l\"endpoint_name d\"un flow, il utilisera le nom du flow (en minuscules et avec les espaces remplacés par des underscores) comme fallback. Vous verrez un message d\"avertissement dans les logs.
+
+#### Téléchargement des pipelines
+Si le téléchargement d\"un pipeline vers OpenWebUI échoue, vérifiez que :
+- L\"URL de l\"instance OpenWebUI est correcte
+- La clé API est valide
+- L\"instance OpenWebUI est accessible depuis l\"environnement où le script s\"exécute
 
 ## Licence
 
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+Ce projet est sous licence MIT.
+
