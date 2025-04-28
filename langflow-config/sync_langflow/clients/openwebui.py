@@ -59,7 +59,7 @@ load_dotenv()
 
 class Pipeline:
     class Valves(BaseModel):
-        BASE_API_URL: str = os.getenv("VALVE_LANGFLOW_API_URL", "http://langflow:7860")
+        BASE_API_URL: str = os.getenv("VALVE_LANGFLOW_API_URL", "no found")
         ENDPOINT: str = "ENDPOINT_PLACEHOLDER"  # The endpoint name of the flow
         # Default tweaks for the Langflow components
         TWEAKS: dict = {}
