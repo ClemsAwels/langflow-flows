@@ -1803,6 +1803,6 @@
   "description": "A simple but powerful starter agent.",
   "name": "Alina",
   "last_tested_version": "1.2.0",
-  "endpoint_name": null,
+  "endpoint_name": "alina_agent",
   "is_component": false
 }
