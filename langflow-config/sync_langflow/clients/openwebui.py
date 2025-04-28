@@ -55,8 +55,7 @@ import json
 
 class Pipeline:
     class Valves(BaseModel):
-        BASE_API_URL: str = "http://host.docker.internal:7860"
-        FLOW_ID: str = ""
+        BASE_API_URL: str = "http://langflow:7860"
         ENDPOINT: str = "ENDPOINT_PLACEHOLDER"  # The endpoint name of the flow
         # Default tweaks for the Langflow components
         TWEAKS: dict = {}
