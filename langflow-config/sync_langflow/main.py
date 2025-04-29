@@ -52,6 +52,7 @@ def main():
     logger.info("Configuration chargée:")
     # Utiliser des variables temporaires pour éviter les erreurs de syntaxe f-string
     log_config = config.to_dict()
+    valve_langflow_api_url = log_config["valve_langflow_api_url"]
     langflow_url = log_config["langflow_url"]
     api_token = log_config["api_token"]
     repo_path = log_config["repo_path"]
@@ -83,7 +84,8 @@ def main():
             openwebui_manager = OpenWebUIManager(
                 config.openwebui_url,
                 config.openwebui_api_key,
-                config.openwebui_template_path
+                config.openwebui_template_path,
+                config.valve_langflow_api_url
             )
     except Exception as e:
         logger.error(f"Erreur lors de l\"initialisation des clients: {e}")

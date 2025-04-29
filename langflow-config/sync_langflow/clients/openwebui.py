@@ -10,7 +10,7 @@ logger = logging.getLogger("sync_app")
 class OpenWebUIManager:
     """Gestionnaire pour l'intégration avec OpenWebUI."""
 
-    def __init__(self, base_url: str, api_key: str, template_path: Optional[str] = None):
+    def __init__(self, base_url: str, api_key: str, template_path: Optional[str] = None, valve_langflow_api_url: str = None):
         """
         Initialise le gestionnaire OpenWebUI.
         
@@ -23,6 +23,7 @@ class OpenWebUIManager:
         self.api_key = api_key
         self.template_path = template_path
         self.template_content = None
+        self.valve_langflow_api_url = valve_langflow_api_url
         
         # Charger le template s'il est spécifié
         if template_path and os.path.exists(template_path):
@@ -56,7 +57,7 @@ import os
 
 class Pipeline:
     class Valves(BaseModel):
-        BASE_API_URL: str = os.environ.get("VALVE_LANGFLOW_API_URL", "no found")
+        BASE_API_URL: str = "VALVE_LANGFLOW_API_URL_PLACEHOLDER"
         ENDPOINT: str = "ENDPOINT_PLACEHOLDER"  # The endpoint name of the flow
         # Default tweaks for the Langflow components
         TWEAKS: dict = {}
@@ -283,6 +284,10 @@ class Pipeline:
             # Remplacer les placeholders dans le template
             pipeline_content = self.template_content.replace("ENDPOINT_PLACEHOLDER", endpoint_name)
             pipeline_content = pipeline_content.replace("FLOW_NAME_PLACEHOLDER", flow_name)
+
+            # Utiliser self.valve_langflow_api_url ou la valeur par défaut
+            api_url = self.valve_langflow_api_url or "http://langflow:7860"
+            pipeline_content = pipeline_content.replace("VALVE_LANGFLOW_API_URL_PLACEHOLDER", api_url)
             
             # Créer le nom du fichier
             # Convertir le nom du flow en un nom de fichier valide
