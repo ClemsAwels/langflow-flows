@@ -75,7 +75,7 @@ def main():
         logger.info(f"  OpenWebUI URL: {openwebui_url}")
         logger.info(f"  OpenWebUI API Key: {openwebui_api_key}")
         logger.info(f"  OpenWebUI Template Path: {openwebui_template_path}")
-        logger.info(f"  OpenWebUI Template Path: {valve_langflow_api_url}")
+        logger.info(f"  Valves Langflow Default Api Url : {valve_langflow_api_url}")
 
     # Initialiser les clients
     try:
@@ -182,6 +182,38 @@ def main():
                 else:
                     logger.warning(f"  -> Informations insuffisantes (endpoint ou nom) pour générer le pipeline pour le flow ID {flow_id}")
             logger.info(f"Pipelines OpenWebUI téléchargés/mis à jour: {pipelines_uploaded}")
+        
+    # 7.5 Supprimer les pipelines OpenWebUI non utilisés
+    if config.enable_openwebui and openwebui_manager:
+        logger.info("Suppression des pipelines OpenWebUI non utilisés...")
+        
+        # Collecter tous les endpoints utilisés par les flows existants
+        used_endpoints = []
+        
+        # Récupérer tous les flows actifs dans Langflow
+        all_flows = langflow_client.get_all_flows()
+        
+        for flow in all_flows:
+            # Extraire l'endpoint_name du flow
+            endpoint_name = flow.get("data", {}).get("endpoint_name")
+            flow_name = flow.get("name", "")
+            
+            # Si l'endpoint_name n'est pas disponible, utiliser le nom du flow comme fallback
+            if not endpoint_name and flow_name:
+                endpoint_name = flow_name.lower().replace(" ", "_")
+            
+            if endpoint_name:
+                used_endpoints.append(endpoint_name)
+        
+        # Appeler la méthode pour supprimer les pipelines non utilisés
+        deleted_count, deleted_pipelines = openwebui_manager.delete_unused_pipelines(used_endpoints)
+        
+        if deleted_count > 0:
+            logger.info(f"Pipelines OpenWebUI supprimés: {deleted_count}")
+            for pipeline_name in deleted_pipelines:
+                logger.info(f"  - {pipeline_name}")
+        else:
+            logger.info("Aucun pipeline OpenWebUI non utilisé à supprimer")
 
     # 8. Supprimer les dossiers vides
     logger.info("Suppression des dossiers vides...")

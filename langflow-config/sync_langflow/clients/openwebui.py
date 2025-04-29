@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+import re
 import requests
 from typing import Dict, List, Any, Optional, Tuple
 from requests.exceptions import RequestException
@@ -366,5 +367,134 @@ class Pipeline:
             return False
         except Exception as e:
             logger.error(f"Erreur inattendue lors du téléchargement du pipeline {file_name}: {e}")
+            return False
+        
+    def delete_unused_pipelines(self, used_endpoints: List[str]) -> Tuple[int, List[str]]:
+        """
+        Supprime les pipelines dans OpenWebUI qui ont des endpoints qui ne sont pas utilisés 
+        par les flows Langflow.
+        
+        Args:
+            used_endpoints: Liste des endpoints actuellement utilisés par les flows Langflow.
+            
+        Returns:
+            Tuple[int, List[str]]: Nombre de pipelines supprimés et liste de leurs noms.
+        """
+        deleted_pipelines = []
+        deleted_count = 0
+        
+        # Récupérer tous les pipelines existants
+        all_pipelines = self.get_all_pipelines()
+        
+        if not all_pipelines:
+            logger.warning("Aucun pipeline trouvé dans OpenWebUI ou erreur lors de la récupération.")
+            return 0, []
+        
+        # Création d'un ensemble pour les recherches plus rapides
+        used_endpoints_set = set(used_endpoints)
+        
+        for pipeline in all_pipelines:
+            pipeline_id = pipeline.get("id")
+            pipeline_name = pipeline.get("name", "")
+            pipeline_file = pipeline.get("filepath", "")
+            
+            # Extraire l'endpoint du fichier de pipeline
+            pipeline_endpoint = None
+            try:
+                if pipeline_file and os.path.exists(pipeline_file):
+                    with open(pipeline_file, "r", encoding="utf-8") as file:
+                        content = file.read()
+                        endpoint_match = re.search(r'ENDPOINT\s*=\s*["\']([^"\']+)["\']', content)
+                        if endpoint_match:
+                            pipeline_endpoint = endpoint_match.group(1)
+            except Exception as e:
+                logger.error(f"Erreur lors de la lecture du fichier pipeline '{pipeline_file}': {e}")
+            
+            # Si nous n'avons pas pu extraire l'endpoint du fichier, essayer depuis les métadonnées
+            if not pipeline_endpoint and "metadata" in pipeline:
+                metadata = pipeline.get("metadata", {})
+                pipeline_endpoint = metadata.get("endpoint")
+            
+            # Si nous avons un endpoint et qu'il n'est pas dans la liste des endpoints utilisés
+            if pipeline_endpoint and pipeline_endpoint not in used_endpoints_set:
+                logger.info(f"Suppression du pipeline '{pipeline_name}' avec endpoint '{pipeline_endpoint}' non utilisé.")
+                if self.delete_pipeline(pipeline_id):
+                    deleted_count += 1
+                    deleted_pipelines.append(f"{pipeline_name} (endpoint: {pipeline_endpoint})")
+        
+        return deleted_count, deleted_pipelines
+
+    def get_all_pipelines(self) -> List[Dict[str, Any]]:
+        """
+        Récupère la liste de tous les pipelines depuis OpenWebUI.
+        
+        Returns:
+            List[Dict[str, Any]]: Liste des pipelines avec leurs informations.
+        """
+        # Préparer l'URL de l'API
+        api_url = f"{self.base_url}/api/v1/pipelines"
+        
+        # Préparer les en-têtes
+        headers = {
+            "accept": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        
+        try:
+            logger.info(f"Récupération de tous les pipelines depuis {api_url}...")
+            response = requests.get(api_url, headers=headers)
+            
+            if response.status_code == 200:
+                pipelines = response.json()
+                logger.info(f"Récupération réussie de {len(pipelines)} pipelines depuis OpenWebUI")
+                return pipelines
+            else:
+                logger.error(f"Erreur {response.status_code} lors de la récupération des pipelines: {response.text}")
+                return []
+        except RequestException as e:
+            logger.error(f"Erreur réseau lors de la récupération des pipelines: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la récupération des pipelines: {e}")
+            return []
+
+    def delete_pipeline(self, pipeline_id: str) -> bool:
+        """
+        Supprime un pipeline spécifique dans OpenWebUI.
+        
+        Args:
+            pipeline_id: ID du pipeline à supprimer.
+            
+        Returns:
+            bool: True si la suppression a réussi, False sinon.
+        """
+        if not pipeline_id:
+            logger.error("ID de pipeline non fourni pour la suppression.")
+            return False
+        
+        # Préparer l'URL de l'API
+        api_url = f"{self.base_url}/api/v1/pipelines/{pipeline_id}"
+        
+        # Préparer les en-têtes
+        headers = {
+            "accept": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        
+        try:
+            logger.info(f"Suppression du pipeline avec ID {pipeline_id}...")
+            response = requests.delete(api_url, headers=headers)
+            
+            if response.status_code in [200, 204]:
+                logger.info(f"Pipeline {pipeline_id} supprimé avec succès")
+                return True
+            else:
+                logger.error(f"Erreur {response.status_code} lors de la suppression du pipeline {pipeline_id}: {response.text}")
+                return False
+        except RequestException as e:
+            logger.error(f"Erreur réseau lors de la suppression du pipeline {pipeline_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la suppression du pipeline {pipeline_id}: {e}")
             return False
 
