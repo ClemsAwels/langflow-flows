@@ -286,7 +286,7 @@ class Pipeline:
             pipeline_content = pipeline_content.replace("FLOW_NAME_PLACEHOLDER", flow_name)
 
             # Utiliser self.valve_langflow_api_url ou la valeur par défaut
-            api_url = self.valve_langflow_api_url or "http://langflow:7860"
+            api_url = self.valve_langflow_api_url or "http://langflowaa:7860"
             pipeline_content = pipeline_content.replace("VALVE_LANGFLOW_API_URL_PLACEHOLDER", api_url)
             
             # Créer le nom du fichier
