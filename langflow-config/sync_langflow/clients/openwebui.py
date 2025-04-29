@@ -396,41 +396,10 @@ class Pipeline:
         for pipeline in all_pipelines:
             pipeline_id = pipeline.get("id")
             pipeline_name = pipeline.get("name", "")
-            pipeline_file = pipeline.get("filepath", "")
             
-            # Extraire l'endpoint du fichier de pipeline
-            pipeline_endpoint = None
-            try:
-                if pipeline_file and os.path.exists(pipeline_file):
-                    with open(pipeline_file, "r", encoding="utf-8") as file:
-                        content = file.read()
-                        endpoint_match = re.search(r'ENDPOINT\s*=\s*["\']([^"\']+)["\']', content)
-                        if endpoint_match:
-                            pipeline_endpoint = endpoint_match.group(1)
-                
-                # Si on ne trouve pas l'endpoint via regex, chercher autrement dans le contenu
-                if not pipeline_endpoint and pipeline_file and os.path.exists(pipeline_file):
-                    with open(pipeline_file, "r", encoding="utf-8") as file:
-                        content = file.read()
-                        # Chercher l'assignation de ENDPOINT dans le code Python
-                        for line in content.splitlines():
-                            if "ENDPOINT" in line and "=" in line:
-                                parts = line.split("=", 1)
-                                if len(parts) > 1:
-                                    endpoint_value = parts[1].strip()
-                                    # Nettoyer les guillemets
-                                    endpoint_value = endpoint_value.strip('\'"')
-                                    if endpoint_value:
-                                        pipeline_endpoint = endpoint_value
-                                        break
-                        
-            except Exception as e:
-                logger.error(f"Erreur lors de la lecture du fichier pipeline '{pipeline_file}': {e}")
-            
-            # Si nous n'avons pas pu extraire l'endpoint du fichier, essayer depuis les métadonnées
-            if not pipeline_endpoint and "metadata" in pipeline:
-                metadata = pipeline.get("metadata", {})
-                pipeline_endpoint = metadata.get("endpoint")
+            # Dans cette implémentation, l'ID du pipeline est considéré comme l'endpoint
+            # car il semble correspondre au nom du endpoint Langflow
+            pipeline_endpoint = pipeline_id
             
             # Si nous avons un endpoint et qu'il n'est pas dans la liste des endpoints utilisés
             if pipeline_endpoint and pipeline_endpoint not in used_endpoints_set:
@@ -440,7 +409,6 @@ class Pipeline:
                     deleted_pipelines.append(f"{pipeline_name} (endpoint: {pipeline_endpoint})")
         
         return deleted_count, deleted_pipelines
-
     def get_all_pipelines(self) -> List[Dict[str, Any]]:
         """
         Récupère la liste de tous les pipelines depuis OpenWebUI.
@@ -468,14 +436,16 @@ class Pipeline:
             
             if response.status_code == 200:
                 try:
-                    pipelines = response.json()
+                    response_data = response.json()
+                    # Extraire la liste des pipelines du champ 'data'
+                    pipelines = response_data.get('data', [])
                     logger.info(f"Récupération réussie de {len(pipelines)} pipelines depuis OpenWebUI")
                     return pipelines
                 except json.JSONDecodeError as json_err:
-                    logger.error(f"Erreur de décodage JSON: {json_err}. Contenu: '{response.text}...'")
+                    logger.error(f"Erreur de décodage JSON: {json_err}. Contenu: '{response.text[:200]}...'")
                     return []
             else:
-                logger.error(f"Erreur {response.status_code} lors de la récupération des pipelines: {response.text}")
+                logger.error(f"Erreur {response.status_code} lors de la récupération des pipelines: {response.text[:200]}")
                 return []
         except RequestException as e:
             logger.error(f"Erreur réseau lors de la récupération des pipelines: {e}")
@@ -483,7 +453,6 @@ class Pipeline:
         except Exception as e:
             logger.error(f"Erreur inattendue lors de la récupération des pipelines: {e}")
             return []
-
     def delete_pipeline(self, pipeline_id: str) -> bool:
         """
         Supprime un pipeline spécifique dans OpenWebUI.
@@ -516,7 +485,7 @@ class Pipeline:
         
         try:
             logger.info(f"Suppression du pipeline avec ID {pipeline_id}...")
-            # Utiliser json= pour envoyer le corps JSON et non pas mettre l'ID dans l'URL
+            # Utiliser json= pour envoyer le corps JSON
             response = requests.delete(api_url, headers=headers, json=data)
             
             if response.status_code in [200, 204]:
@@ -531,4 +500,3 @@ class Pipeline:
         except Exception as e:
             logger.error(f"Erreur inattendue lors de la suppression du pipeline {pipeline_id}: {e}")
             return False
-
