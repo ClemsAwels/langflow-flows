@@ -457,14 +457,23 @@ class Pipeline:
             "Authorization": f"Bearer {self.api_key}",
         }
         
+        # Ajouter le paramètre urlIdx nécessaire
+        params = {
+            "urlIdx": 1
+        }
+        
         try:
             logger.info(f"Récupération de tous les pipelines depuis {api_url}...")
-            response = requests.get(api_url, headers=headers)
+            response = requests.get(api_url, headers=headers, params=params)
             
             if response.status_code == 200:
-                pipelines = response.json()
-                logger.info(f"Récupération réussie de {len(pipelines)} pipelines depuis OpenWebUI")
-                return pipelines
+                try:
+                    pipelines = response.json()
+                    logger.info(f"Récupération réussie de {len(pipelines)} pipelines depuis OpenWebUI")
+                    return pipelines
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"Erreur de décodage JSON: {json_err}. Contenu: '{response.text[:100]}...'")
+                    return []
             else:
                 logger.error(f"Erreur {response.status_code} lors de la récupération des pipelines: {response.text}")
                 return []
@@ -489,18 +498,26 @@ class Pipeline:
             logger.error("ID de pipeline non fourni pour la suppression.")
             return False
         
-        # Préparer l'URL de l'API
-        api_url = f"{self.base_url}/api/v1/pipelines/{pipeline_id}"
+        # Préparer l'URL de l'API - attention à l'endpoint correct
+        api_url = f"{self.base_url}/api/v1/pipelines/delete"
         
         # Préparer les en-têtes
         headers = {
             "accept": "application/json",
             "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Corps de la requête avec l'ID et urlIdx
+        data = {
+            "id": pipeline_id,
+            "urlIdx": 1
         }
         
         try:
             logger.info(f"Suppression du pipeline avec ID {pipeline_id}...")
-            response = requests.delete(api_url, headers=headers)
+            # Utiliser json= pour envoyer le corps JSON et non pas mettre l'ID dans l'URL
+            response = requests.delete(api_url, headers=headers, json=data)
             
             if response.status_code in [200, 204]:
                 logger.info(f"Pipeline {pipeline_id} supprimé avec succès")
