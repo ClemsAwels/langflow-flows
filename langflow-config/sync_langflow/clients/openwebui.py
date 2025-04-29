@@ -407,6 +407,23 @@ class Pipeline:
                         endpoint_match = re.search(r'ENDPOINT\s*=\s*["\']([^"\']+)["\']', content)
                         if endpoint_match:
                             pipeline_endpoint = endpoint_match.group(1)
+                
+                # Si on ne trouve pas l'endpoint via regex, chercher autrement dans le contenu
+                if not pipeline_endpoint and pipeline_file and os.path.exists(pipeline_file):
+                    with open(pipeline_file, "r", encoding="utf-8") as file:
+                        content = file.read()
+                        # Chercher l'assignation de ENDPOINT dans le code Python
+                        for line in content.splitlines():
+                            if "ENDPOINT" in line and "=" in line:
+                                parts = line.split("=", 1)
+                                if len(parts) > 1:
+                                    endpoint_value = parts[1].strip()
+                                    # Nettoyer les guillemets
+                                    endpoint_value = endpoint_value.strip('\'"')
+                                    if endpoint_value:
+                                        pipeline_endpoint = endpoint_value
+                                        break
+                        
             except Exception as e:
                 logger.error(f"Erreur lors de la lecture du fichier pipeline '{pipeline_file}': {e}")
             

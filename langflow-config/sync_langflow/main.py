@@ -191,7 +191,7 @@ def main():
         used_endpoints = []
         
         # Récupérer tous les flows actifs dans Langflow
-        all_flows = langflow_client.get_all_flows()
+        all_flows = langflow_client.get_flows()
         
         for flow in all_flows:
             # Extraire l'endpoint_name du flow
