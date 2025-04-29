@@ -257,42 +257,19 @@ class FlowManager:
         deleted_flow_ids = []
         
         for flow_path in flow_paths:
-            try:
-                # Essayer d'abord d'extraire le nom du flow à partir du fichier JSON
-                # Construire le chemin complet vers le fichier supprimé
-                flow_name = None
-                full_path = os.path.join(os.environ.get("REPO_PATH", ""), flow_path)
-                
-                # Le fichier peut encore exister dans le dépôt local même s'il a été supprimé du commit
-                if os.path.exists(full_path):
-                    try:
-                        with open(full_path, 'r', encoding='utf-8') as f:
-                            flow_data = json.load(f)
-                            if "name" in flow_data:
-                                flow_name = flow_data["name"]
-                                logger.debug(f"Nom du flow extrait du JSON: {flow_name}")
-                    except Exception as e:
-                        logger.warning(f"Impossible de lire le fichier JSON {full_path}: {e}")
-                
-                # Si on n'a pas pu extraire le nom du fichier JSON, utiliser le chemin comme fallback
-                if not flow_name:
-                    flow_name = extract_flow_name_from_path(flow_path)
-                    logger.debug(f"Nom du flow extrait du chemin: {flow_name}")
-                
-                logger.debug(f"Traitement du flow supprimé: {flow_path} (Nom extrait: {flow_name})")
-                
-                existing_flow = self.find_flow_by_name(flow_name)
-                
-                if existing_flow:
-                    flow_id = existing_flow["id"]
-                    logger.info(f"Flow '{flow_name}' (supprimé dans Git) existe dans Langflow (ID: {flow_id}). Suppression...")
-                    success = self.delete_flow(flow_id)
-                    if success:
-                        deleted_flow_ids.append(flow_id)
-                else:
-                    logger.warning(f"Flow '{flow_name}' (supprimé dans Git) n'existe pas dans Langflow. Suppression ignorée.")
-            except Exception as e:
-                logger.error(f"Erreur lors du traitement du flow supprimé {flow_path}: {e}")
+            flow_name = extract_flow_name_from_path(flow_path)
+            logger.debug(f"Traitement du flow supprimé: {flow_path} (Nom extrait: {flow_name})")
+            
+            existing_flow = self.find_flow_by_name(flow_name)
+            
+            if existing_flow:
+                flow_id = existing_flow["id"]
+                logger.info(f"Flow 	{flow_name}	 (supprimé dans Git) existe dans Langflow (ID: {flow_id}). Suppression...")
+                success = self.delete_flow(flow_id)
+                if success:
+                    deleted_flow_ids.append(flow_id)
+            else:
+                logger.warning(f"Flow 	{flow_name}	 (supprimé dans Git) n\"existe pas dans Langflow. Suppression ignorée.")
         
         return deleted_flow_ids
 
