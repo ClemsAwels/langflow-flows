@@ -75,6 +75,7 @@ def main():
         logger.info(f"  OpenWebUI URL: {openwebui_url}")
         logger.info(f"  OpenWebUI API Key: {openwebui_api_key}")
         logger.info(f"  OpenWebUI Template Path: {openwebui_template_path}")
+        logger.info(f"  OpenWebUI Template Path: {valve_langflow_api_url}")
 
     # Initialiser les clients
     try:
