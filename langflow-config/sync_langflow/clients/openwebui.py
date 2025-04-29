@@ -472,7 +472,7 @@ class Pipeline:
                     logger.info(f"Récupération réussie de {len(pipelines)} pipelines depuis OpenWebUI")
                     return pipelines
                 except json.JSONDecodeError as json_err:
-                    logger.error(f"Erreur de décodage JSON: {json_err}. Contenu: '{response.text[:100]}...'")
+                    logger.error(f"Erreur de décodage JSON: {json_err}. Contenu: '{response.text}...'")
                     return []
             else:
                 logger.error(f"Erreur {response.status_code} lors de la récupération des pipelines: {response.text}")
