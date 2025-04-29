@@ -449,7 +449,7 @@ class Pipeline:
             List[Dict[str, Any]]: Liste des pipelines avec leurs informations.
         """
         # Préparer l'URL de l'API
-        api_url = f"{self.base_url}/api/v1/pipelines"
+        api_url = f"{self.base_url}/api/v1/pipelines/"
         
         # Préparer les en-têtes
         headers = {
