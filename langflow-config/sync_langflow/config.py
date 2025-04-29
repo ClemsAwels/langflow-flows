@@ -20,6 +20,7 @@ class Config:
         self.openwebui_api_key = None
         self.enable_openwebui = False
         self.openwebui_template_path = None
+        self.valve_langflow_api_url = "http://langflow-test:7860"
 
     def load_from_env(self) -> None:
         """Charge la configuration à partir des variables d'environnement."""
@@ -36,6 +37,7 @@ class Config:
         self.openwebui_api_key = os.environ.get("OPENWEBUI_API_KEY", self.openwebui_api_key)
         self.enable_openwebui = os.environ.get("ENABLE_OPENWEBUI", "False").lower() == "true"
         self.openwebui_template_path = os.environ.get("OPENWEBUI_TEMPLATE_PATH", self.openwebui_template_path)
+        self.valve_langflow_api_url = os.environ.get("VALVE_LANGFLOW_API_URL", self.valve_langflow_api_url)
 
     def load_from_args(self, args: argparse.Namespace) -> None:
         """
@@ -88,7 +90,8 @@ class Config:
             "openwebui_url": self.openwebui_url,
             "openwebui_api_key": "***" if self.openwebui_api_key else None,
             "enable_openwebui": self.enable_openwebui,
-            "openwebui_template_path": self.openwebui_template_path
+            "openwebui_template_path": self.openwebui_template_path,
+            "valve_langflow_api_url": self.valve_langflow_api_url
         }
 
     def validate(self) -> Optional[str]:
