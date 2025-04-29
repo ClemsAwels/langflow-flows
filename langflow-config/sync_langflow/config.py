@@ -20,7 +20,7 @@ class Config:
         self.openwebui_api_key = None
         self.enable_openwebui = False
         self.openwebui_template_path = None
-        self.valve_langflow_api_url = "http://langflow-test:7860"
+        self.valve_langflow_api_url = "http://langflow:7860"
 
     def load_from_env(self) -> None:
         """Charge la configuration à partir des variables d'environnement."""
