@@ -1801,8 +1801,8 @@
     }
   },
   "description": "A simple but powerful starter agent. ",
-  "name": "Clementhe",
+  "name": "Clement",
   "last_tested_version": "1.2.0",
-  "endpoint_name": "clementhe_agenticart",
+  "endpoint_name": "clement_agent",
   "is_component": false
 }
